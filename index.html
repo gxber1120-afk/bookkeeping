@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>天天記帳 Web版</title>
+  <title>天天記帳</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Vue 3 -->
@@ -14,189 +14,192 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     [v-cloak] { display: none; }
-    body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f7f3ed; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   </style>
 </head>
 <body>
-<div id="app" v-cloak class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col relative pb-20">
+<div id="app" v-cloak class="max-w-md mx-auto min-h-screen bg-[#fcf9f5] shadow-lg flex flex-col relative pb-24">
 
-  <!-- 頂部 Header & 帳本切換 -->
-  <header class="bg-amber-400 p-4 text-gray-800 shadow-md">
-    <div class="flex justify-between items-center mb-2">
-      <!-- 切換帳本 -->
-      <div class="flex items-center space-x-1 cursor-pointer" @click="showLedgerModal = true">
-        <i class="fa-solid fa-book"></i>
-        <span class="font-bold text-lg">{{ currentLedger }}</span>
-        <i class="fa-solid fa-chevron-down text-xs"></i>
+  <!-- 頂部卡片區 (呼應截圖的質感) -->
+  <header class="bg-[#fcf9f5] pt-4 px-4 pb-2">
+    <!-- 月份與帳本資訊 -->
+    <div class="flex justify-between items-center mb-3">
+      <div class="flex items-center space-x-2">
+        <button @click="changeMonth(-1)" class="text-gray-500 hover:text-amber-600"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+        <h1 class="text-lg font-bold text-gray-800">{{ currentYearMonth }}</h1>
+        <button @click="changeMonth(1)" class="text-gray-500 hover:text-amber-600"><i class="fa-solid fa-chevron-right text-sm"></i></button>
       </div>
-      <!-- 統計圖表/設定 -->
-      <div class="space-x-3 text-lg">
-        <button @click="currentTab = 'chart'" class="hover:text-white"><i class="fa-solid fa-chart-pie"></i></button>
-        <button @click="exportCSV" class="hover:text-white" title="匯出CSV"><i class="fa-solid fa-file-export"></i></button>
+      <div class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">
+        私人版 · 本機
       </div>
     </div>
 
-    <!-- 本月收支總覽 -->
-    <div class="grid grid-cols-3 text-center bg-amber-300/60 rounded-lg p-2 text-xs">
+    <!-- 本月收支總覽看板 -->
+    <div class="grid grid-cols-3 gap-2 bg-white rounded-2xl p-3 shadow-sm border border-amber-100 text-center">
       <div>
-        <div class="text-gray-600">本月支出</div>
-        <div class="text-red-600 font-bold text-sm">${{ monthlyExpense }}</div>
+        <div class="text-[11px] text-gray-400 mb-0.5">本月支出</div>
+        <div class="text-red-500 font-bold text-sm">NT$ {{ monthlyExpense }}</div>
       </div>
       <div>
-        <div class="text-gray-600">本月收入</div>
-        <div class="text-green-700 font-bold text-sm">${{ monthlyIncome }}</div>
+        <div class="text-[11px] text-gray-400 mb-0.5">本月收入</div>
+        <div class="text-gray-800 font-bold text-sm">NT$ {{ monthlyIncome }}</div>
       </div>
       <div>
-        <div class="text-gray-600">結餘</div>
-        <div class="font-bold text-sm" :class="monthlyBalance >= 0 ? 'text-gray-800' : 'text-red-600'">${{ monthlyBalance }}</div>
+        <div class="text-[11px] text-gray-400 mb-0.5">結餘</div>
+        <div class="text-gray-800 font-bold text-sm">NT$ {{ monthlyBalance }}</div>
       </div>
     </div>
   </header>
 
-  <!-- 視圖切換：明細 / 圖表 / 預算與帳戶 -->
-  <main class="flex-1 overflow-y-auto p-3">
+  <!-- 主視圖區域 -->
+  <main class="flex-1 px-4 space-y-4">
     
     <!-- 視圖 1：明細與日曆 -->
-    <div v-if="currentTab === 'list'">
-      <!-- 簡易月曆/日期選擇器 -->
-      <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-3 border text-sm">
-        <button @click="changeMonth(-1)" class="p-1 px-2 text-gray-500"><i class="fa-solid fa-chevron-left"></i></button>
-        <span class="font-bold text-gray-700">{{ currentYearMonth }}</span>
-        <button @click="changeMonth(1)" class="p-1 px-2 text-gray-500"><i class="fa-solid fa-chevron-right"></i></button>
+    <div v-if="currentTab === 'list'" class="space-y-4">
+      
+      <!-- 仿截圖的日曆網格檢視 -->
+      <div class="bg-white rounded-2xl p-3 shadow-sm border border-amber-100">
+        <!-- 星期列 -->
+        <div class="grid grid-cols-7 text-center text-xs text-gray-400 mb-2 font-medium">
+          <span v-for="d in ['一', '二', '三', '四', '五', '六', '日']" :key="d">{{ d }}</span>
+        </div>
+        <!-- 日期數字列 -->
+        <div class="grid grid-cols-7 gap-1 text-center text-xs">
+          <div v-for="dayObj in calendarDays" :key="dayObj.dateStr"
+               @click="selectedDate = dayObj.dateStr"
+               class="py-2 rounded-xl flex flex-col items-center justify-center cursor-pointer transition"
+               :class="{
+                 'bg-amber-500 text-white font-bold shadow-md': selectedDate === dayObj.dateStr,
+                 'hover:bg-amber-50': selectedDate !== dayObj.dateStr && dayObj.isCurrentMonth,
+                 'text-gray-300': !dayObj.isCurrentMonth
+               }">
+            <span>{{ dayObj.day }}</span>
+            <!-- 顯示當日小記 -->
+            <span v-if="dayObj.hasExpense" class="text-[9px] mt-0.5 leading-none" :class="selectedDate === dayObj.dateStr ? 'text-white' : 'text-red-500'">
+              -{{ dayObj.dayExpense }}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <!-- 預算進度條 -->
-      <div class="bg-amber-50 border border-amber-200 p-2 rounded-lg mb-3 text-xs">
-        <div class="flex justify-between mb-1">
-          <span>本月預算: ${{ monthlyBudget }}</span>
-          <span>剩餘: ${{ monthlyBudget - monthlyExpense }}</span>
+      <!-- 選定日期的明細清單 -->
+      <div class="space-y-2">
+        <div class="text-xs font-bold text-gray-500 px-1 flex justify-between items-center">
+          <span>{{ selectedDate }}</span>
+          <button @click="exportCSV" class="text-amber-600 hover:underline"><i class="fa-solid fa-file-export mr-1"></i>匯出CSV</button>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div class="bg-amber-500 h-2 rounded-full" :style="{ width: Math.min((monthlyExpense / monthlyBudget) * 100, 100) + '%' }"></div>
-        </div>
-      </div>
 
-      <!-- 記帳明細列表 -->
-      <div v-if="filteredRecords.length === 0" class="text-center py-10 text-gray-400">
-        <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
-        <p>本月尚無記帳紀錄，點擊下方「+」開始記帳！</p>
-      </div>
-
-      <div v-for="(group, date) in groupedRecords" :key="date" class="mb-4 bg-white border rounded-lg shadow-sm overflow-hidden">
-        <div class="bg-gray-100 px-3 py-1.5 text-xs text-gray-500 flex justify-between font-medium">
-          <span>{{ date }}</span>
-          <span>支出: ${{ group.expense }} | 收入: ${{ group.income }}</span>
+        <div v-if="selectedDayRecords.length === 0" class="bg-white rounded-2xl p-6 text-center text-gray-400 text-xs shadow-sm border border-amber-100">
+          這一天沒有記帳紀錄
         </div>
-        <div v-for="item in group.items" :key="item.id" class="p-3 border-b last:border-0 flex justify-between items-center text-sm">
+
+        <div v-for="item in selectedDayRecords" :key="item.id" 
+             class="bg-white rounded-2xl p-3.5 shadow-sm border border-amber-100 flex justify-between items-center">
           <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs" :class="typeColor(item.type)">
+            <div class="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
               <i :class="item.icon"></i>
             </div>
             <div>
-              <div class="font-semibold text-gray-800">{{ item.category }} <span class="text-xs text-gray-400 font-normal">({{ item.account }})</span></div>
-              <div class="text-xs text-gray-400" v-if="item.note || item.member">
-                {{ item.member ? '[' + item.member + '] ' : '' }}{{ item.note }}
-              </div>
+              <div class="font-bold text-gray-800 text-sm">{{ item.category }}</div>
+              <div class="text-[11px] text-gray-400">{{ item.account }} {{ item.note ? '· ' + item.note : '' }}</div>
             </div>
           </div>
-          <div class="flex items-center space-x-2">
-            <span class="font-bold" :class="item.type === 'expense' ? 'text-red-500' : 'text-green-600'">
-              {{ item.type === 'expense' ? '-' : '+' }}${{ item.amount }}
-            </span>
-            <button @click="deleteRecord(item.id)" class="text-gray-300 hover:text-red-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+          <div class="text-right">
+            <div class="font-bold text-sm" :class="item.type === 'expense' ? 'text-red-500' : 'text-green-600'">
+              {{ item.type === 'expense' ? '-' : '+' }}{{ item.amount }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 視圖 2：統計圖表 -->
-    <div v-if="currentTab === 'chart'" class="space-y-4">
-      <div class="flex justify-between items-center border-b pb-2">
-        <h3 class="font-bold text-gray-700">支出統計分析</h3>
-        <button @click="currentTab = 'list'" class="text-xs text-amber-600">返回明細</button>
-      </div>
-      <div class="relative w-full h-64">
+    <!-- 視圖 2：圖表分析 -->
+    <div v-if="currentTab === 'chart'" class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 space-y-4">
+      <h3 class="font-bold text-gray-700 text-sm">本月支出分類比例</h3>
+      <div class="relative w-full h-64 flex justify-center">
         <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 視圖 3：帳戶列表 -->
+    <div v-if="currentTab === 'account'" class="space-y-3">
+      <h3 class="font-bold text-gray-700 text-sm px-1">資產帳戶</h3>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+          <div>
+            <div class="font-bold text-gray-800">現金帳戶</div>
+            <div class="text-xs text-gray-400">預設主要錢包</div>
+          </div>
+        </div>
+        <div class="font-bold text-gray-800">NT$ {{ monthlyBalance }}</div>
       </div>
     </div>
 
   </main>
 
-  <!-- 底部固定導覽列 -->
-  <nav class="fixed bottom-0 max-w-md w-full bg-white border-t flex justify-around items-center h-16 shadow-lg z-10">
+  <!-- 底部固定導覽列 (完美對齊截圖中的設計) -->
+  <nav class="absolute bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center h-16 shadow-lg">
     <button @click="currentTab = 'list'" class="flex flex-col items-center text-xs" :class="currentTab==='list'?'text-amber-500':'text-gray-400'">
-      <i class="fa-solid fa-list-ul text-lg"></i>
+      <i class="fa-solid fa-calendar-days text-base mb-0.5"></i>
       <span>明細</span>
     </button>
     
-    <!-- 中間加號記帳按鈕 -->
-    <button @click="openAddModal" class="w-12 h-12 bg-amber-400 hover:bg-amber-500 text-gray-800 rounded-full flex items-center justify-center text-2xl shadow-lg -mt-5 border-4 border-white">
+    <button @click="currentTab = 'chart'" class="flex flex-col items-center text-xs" :class="currentTab==='chart'?'text-amber-500':'text-gray-400'">
+      <i class="fa-solid fa-chart-pie text-base mb-0.5"></i>
+      <span>統計</span>
+    </button>
+
+    <!-- 中央加號按鈕 -->
+    <button @click="openAddModal" class="w-12 h-12 bg-amber-400 hover:bg-amber-500 text-gray-800 rounded-full flex items-center justify-center text-xl shadow-md -mt-4 border-2 border-white">
       <i class="fa-solid fa-plus"></i>
     </button>
 
-    <button @click="currentTab = 'chart'" class="flex flex-col items-center text-xs" :class="currentTab==='chart'?'text-amber-500':'text-gray-400'">
-      <i class="fa-solid fa-chart-pie text-lg"></i>
-      <span>圖表</span>
+    <button @click="currentTab = 'account'" class="flex flex-col items-center text-xs" :class="currentTab==='account'?'text-amber-500':'text-gray-400'">
+      <i class="fa-solid fa-wallet text-base mb-0.5"></i>
+      <span>帳戶</span>
     </button>
   </nav>
 
   <!-- 彈窗：新增記帳 (支援連續新增) -->
   <div v-if="showAddModal" class="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-    <div class="bg-white w-full max-w-md rounded-t-2xl p-4 animate-slide-up">
-      <div class="flex justify-between items-center mb-3">
-        <div class="flex space-x-2">
-          <button @click="form.type = 'expense'" class="px-3 py-1 rounded-full text-xs font-bold" :class="form.type==='expense'?'bg-red-500 text-white':'bg-gray-100'">支出</button>
-          <button @click="form.type = 'income'" class="px-3 py-1 rounded-full text-xs font-bold" :class="form.type==='income'?'bg-green-600 text-white':'bg-gray-100'">收入</button>
+    <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-4 animate-slide-up">
+      <div class="flex justify-between items-center">
+        <div class="flex space-x-2 bg-gray-100 p-1 rounded-full text-xs">
+          <button @click="form.type = 'expense'" class="px-4 py-1.5 rounded-full font-bold transition" :class="form.type==='expense'?'bg-white text-red-500 shadow-sm':'text-gray-500'">支出</button>
+          <button @click="form.type = 'income'" class="px-4 py-1.5 rounded-full font-bold transition" :class="form.type==='income'?'bg-white text-green-600 shadow-sm':'text-gray-500'">收入</button>
         </div>
-        <button @click="showAddModal = false" class="text-gray-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button @click="showAddModal = false" class="text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <!-- 金額輸入 -->
-      <div class="flex items-center border-b-2 border-amber-400 mb-3 pb-1">
-        <span class="text-xl font-bold mr-2">$</span>
-        <input v-model.number="form.amount" type="number" placeholder="0" class="w-full text-2xl font-bold outline-none" autofocus>
+      <div class="flex items-center border-b-2 border-amber-400 pb-1">
+        <span class="text-2xl font-bold mr-2 text-amber-600">$</span>
+        <input v-model.number="form.amount" type="number" placeholder="0" class="w-full text-3xl font-bold outline-none text-gray-800" autofocus>
       </div>
 
       <!-- 分類選擇 -->
-      <div class="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
+      <div class="grid grid-cols-4 gap-2 text-center text-xs">
         <div v-for="cat in categories[form.type]" :key="cat.name" 
              @click="form.category = cat.name; form.icon = cat.icon"
-             class="p-2 rounded-lg cursor-pointer border" :class="form.category===cat.name?'border-amber-500 bg-amber-50':''">
+             class="p-2.5 rounded-2xl cursor-pointer border transition" :class="form.category===cat.name?'border-amber-500 bg-amber-50 font-bold text-amber-700':'border-gray-100 bg-gray-50 text-gray-600'">
           <i :class="cat.icon" class="text-lg mb-1 block"></i>
           <span>{{ cat.name }}</span>
         </div>
       </div>
 
-      <!-- 額外選項：帳戶、成員、日期、備註 -->
-      <div class="space-y-2 text-xs mb-4">
-        <div class="flex space-x-2">
-          <select v-model="form.account" class="flex-1 p-2 border rounded">
-            <option v-for="acc in accounts" :key="acc" :value="acc">{{ acc }}</option>
-          </select>
-          <select v-model="form.member" class="flex-1 p-2 border rounded">
-            <option value="">選擇成員 (自己)</option>
-            <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
-          </select>
-        </div>
-        <input v-model="form.date" type="date" class="w-full p-2 border rounded">
-        <input v-model="form.note" type="text" placeholder="新增備註..." class="w-full p-2 border rounded">
+      <!-- 其他選項 -->
+      <div class="space-y-2 text-xs">
+        <input v-model="form.date" type="date" class="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none">
+        <input v-model="form.note" type="text" placeholder="備註..." class="w-full p-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none">
       </div>
 
-      <!-- 按鈕區域 (包含「再建一筆」連續新增) -->
-      <div class="flex space-x-2">
-        <button @click="saveRecord(true)" class="flex-1 py-2.5 bg-gray-200 text-gray-700 font-bold rounded-lg">再建一筆</button>
-        <button @click="saveRecord(false)" class="flex-1 py-2.5 bg-amber-400 text-gray-800 font-bold rounded-lg shadow">完成</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 彈窗：切換帳本 -->
-  <div v-if="showLedgerModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-xs rounded-xl p-4 space-y-3">
-      <h3 class="font-bold text-gray-800 border-b pb-2">選擇帳本</h3>
-      <div v-for="l in ledgers" :key="l" @click="currentLedger = l; showLedgerModal = false" class="p-2 hover:bg-gray-100 rounded cursor-pointer flex justify-between">
-        <span>{{ l }}</span>
-        <i v-if="currentLedger === l" class="fa-solid fa-check text-amber-500"></i>
+      <!-- 按鈕 -->
+      <div class="flex space-x-2 pt-2">
+        <button @click="saveRecord(true)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-2xl text-xs transition">再記一筆</button>
+        <button @click="saveRecord(false)" class="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-gray-800 font-bold rounded-2xl text-xs shadow transition">確定</button>
       </div>
     </div>
   </div>
@@ -204,23 +207,15 @@
 </div>
 
 <script>
-const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, watch, nextTick } = Vue;
 
 createApp({
   setup() {
     const currentTab = ref('list');
     const showAddModal = ref(false);
-    const showLedgerModal = ref(false);
-    
-    const currentLedger = ref('預設帳本');
-    const ledgers = ref(['預設帳本', '日常開銷', '旅遊專案']);
-    const accounts = ref(['現金', '銀行卡', '信用卡']);
-    const members = ref(['自己', '家人', '朋友']);
-    
-    const monthlyBudget = ref(20000);
-    const selectedDate = ref(new Date().toISOString().substring(0, 7)); // YYYY-MM
-    
-    // 分類
+    const selectedDate = ref(new Date().toISOString().substring(0, 10)); // 預設今天 YYYY-MM-DD
+    const currentYearMonth = ref(selectedDate.value.substring(0, 7)); // YYYY-MM
+
     const categories = {
       expense: [
         { name: '餐飲', icon: 'fa-solid fa-utensils' },
@@ -237,61 +232,79 @@ createApp({
       ]
     };
 
-    // 表單
     const form = ref({
       amount: null,
       type: 'expense',
       category: '餐飲',
       icon: 'fa-solid fa-utensils',
       account: '現金',
-      member: '',
       date: new Date().toISOString().substring(0, 10),
       note: ''
     });
 
-    // 紀錄資料
     const records = ref(JSON.parse(localStorage.getItem('paulwang_records') || '[]'));
 
     watch(records, (newVal) => {
       localStorage.setItem('paulwang_records', JSON.stringify(newVal));
     }, { deep: true });
 
-    // 篩選當月紀錄
-    const filteredRecords = computed(() => {
-      return records.value.filter(r => r.ledger === currentLedger.value && r.date.startsWith(selectedDate.value));
+    // 切換月份
+    const changeMonth = (delta) => {
+      const [y, m] = currentYearMonth.value.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      currentYearMonth.value = d.toISOString().substring(0, 7);
+    };
+
+    // 當月所有紀錄
+    const monthlyRecords = computed(() => {
+      return records.value.filter(r => r.date.startsWith(currentYearMonth.value));
     });
 
-    // 統計金額
-    const monthlyExpense = computed(() => filteredRecords.value.filter(r => r.type === 'expense').reduce((a, b) => a + b.amount, 0));
-    const monthlyIncome = computed(() => filteredRecords.value.filter(r => r.type === 'income').reduce((a, b) => a + b.amount, 0));
+    const monthlyExpense = computed(() => monthlyRecords.value.filter(r => r.type === 'expense').reduce((a, b) => a + b.amount, 0));
+    const monthlyIncome = computed(() => monthlyRecords.value.filter(r => r.type === 'income').reduce((a, b) => a + b.amount, 0));
     const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpense.value);
 
-    // 按日期分組
-    const groupedRecords = computed(() => {
-      const groups = {};
-      filteredRecords.value.forEach(r => {
-        if (!groups[r.date]) groups[r.date] = { items: [], expense: 0, income: 0 };
-        groups[r.date].items.push(r);
-        if (r.type === 'expense') groups[r.date].expense += r.amount;
-        if (r.type === 'income') groups[r.date].income += r.amount;
-      });
-      return groups;
+    // 產生月曆日格資料
+    const calendarDays = computed(() => {
+      const [y, m] = currentYearMonth.value.split('-').map(Number);
+      const firstDayIndex = new Date(y, m - 1, 1).getDay(); // 0(週日) ~ 6(週六)
+      const adjustedFirstDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1; // 轉為週一開始
+      const daysInMonth = new Date(y, m, 0).getDate();
+
+      let days = [];
+      // 補上個月尾巴
+      for (let i = 0; i < adjustedFirstDay; i++) {
+        days.push({ day: '', dateStr: '', isCurrentMonth: false });
+      }
+
+      // 當月天數
+      for (let i = 1; i <= daysInMonth; i++) {
+        const mm = String(m).padStart(2, '0');
+        const dd = String(i).padStart(2, '0');
+        const dateStr = `${y}-${mm}-${dd}`;
+        
+        const dayExp = records.value.filter(r => r.date === dateStr && r.type === 'expense').reduce((a, b) => a + b.amount, 0);
+
+        days.push({
+          day: i,
+          dateStr,
+          isCurrentMonth: true,
+          hasExpense: dayExp > 0,
+          dayExpense: dayExp
+        });
+      }
+      return days;
     });
 
-    const currentYearMonth = computed(() => {
-      const [y, m] = selectedDate.value.split('-');
-      return `${y}年 ${m}月`;
+    // 點選特定日期的明細
+    const selectedDayRecords = computed(() => {
+      return records.value.filter(r => r.date === selectedDate.value);
     });
-
-    const changeMonth = (delta) => {
-      const [y, m] = selectedDate.value.split('-').map(Number);
-      const d = new Date(y, m - 1 + delta, 1);
-      selectedDate.value = d.toISOString().substring(0, 7);
-    };
 
     const openAddModal = () => {
       form.value.amount = null;
       form.value.note = '';
+      form.value.date = selectedDate.value;
       showAddModal.value = true;
     };
 
@@ -302,7 +315,6 @@ createApp({
       }
       records.value.unshift({
         id: Date.now(),
-        ledger: currentLedger.value,
         ...form.value
       });
 
@@ -314,22 +326,16 @@ createApp({
       }
     };
 
-    const deleteRecord = (id) => {
-      records.value = records.value.filter(r => r.id !== id);
-    };
-
-    const typeColor = (type) => type === 'expense' ? 'bg-red-400' : 'bg-green-500';
-
     // CSV 匯出
     const exportCSV = () => {
-      let csvContent = "data:text/csv;charset=utf-8,日期,帳本,類型,分類,金額,帳戶,成員,備註\n";
+      let csvContent = "data:text/csv;charset=utf-8,日期,類型,分類,金額,帳戶,備註\n";
       records.value.forEach(r => {
-        csvContent += `${r.date},${r.ledger},${r.type},${r.category},${r.amount},${r.account},${r.member},${r.note}\n`;
+        csvContent += `${r.date},${r.type},${r.category},${r.amount},${r.account},${r.note}\n`;
       });
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `bookkeeping_${selectedDate.value}.csv`);
+      link.setAttribute("download", `bookkeeping.csv`);
       document.body.appendChild(link);
       link.click();
     };
@@ -343,7 +349,7 @@ createApp({
         if (chartInstance) chartInstance.destroy();
 
         const catTotals = {};
-        filteredRecords.value.filter(r => r.type === 'expense').forEach(r => {
+        monthlyRecords.value.filter(r => r.type === 'expense').forEach(r => {
           catTotals[r.category] = (catTotals[r.category] || 0) + r.amount;
         });
 
@@ -353,7 +359,7 @@ createApp({
             labels: Object.keys(catTotals),
             datasets: [{
               data: Object.values(catTotals),
-              backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899']
+              backgroundColor: ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899']
             }]
           }
         });
@@ -365,10 +371,9 @@ createApp({
     });
 
     return {
-      currentTab, showAddModal, showLedgerModal, currentLedger, ledgers, accounts, members,
-      monthlyBudget, selectedDate, categories, form, records, filteredRecords, monthlyExpense,
-      monthlyIncome, monthlyBalance, groupedRecords, currentYearMonth, changeMonth, openAddModal,
-      saveRecord, deleteRecord, typeColor, exportCSV
+      currentTab, showAddModal, selectedDate, currentYearMonth, categories, form,
+      monthlyExpense, monthlyIncome, monthlyBalance, calendarDays, selectedDayRecords,
+      changeMonth, openAddModal, saveRecord, exportCSV
     };
   }
 }).mount('#app');
