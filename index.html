@@ -251,6 +251,7 @@ header.ctr h1{text-align:center}
 .ord{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--dim)}.ord .on{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ord button:not(.rdel){width:30px;height:30px;border-radius:50%;border:1px solid var(--dim);background:none;color:var(--tx);font-size:18px;line-height:1}.ord b{min-width:20px;text-align:center}.ord .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.ord .pin2{width:62px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:4px 2px}.ord small{min-width:44px;text-align:right;color:var(--sub)}.tot{display:flex;justify-content:space-between;padding:10px 2px;font-size:17px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.chip .cx{margin-left:8px;color:#e5534b;font-weight:400}
 .frow{display:flex;align-items:center;gap:6px;font-size:17px}.frow span{white-space:nowrap}.frow .eatin{flex:1;min-width:0}
+.fcard{margin:12px 14px 12px;padding:12px 14px;border-radius:12px;background:var(--dim);font-size:15px}.fc-h,.fc-f{display:flex;justify-content:space-between;gap:10px}.fc-h b,.fc-f b{font-weight:600}.fc-t{margin:10px 0 4px;color:var(--sub);font-size:13px}.fc-r{display:flex;gap:8px;padding:3px 0}.fc-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc-q{color:var(--sub);min-width:28px}.fc-p{color:var(--sub);min-width:40px;text-align:right}.fc-s{min-width:50px;text-align:right}.fc-f{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -997,6 +998,13 @@ function learnEat(t){
 }
 const itemsTotal=a=>(a||[]).reduce((s,x)=>s+(+x.q||0)*(+x.p||0),0);
 const dishSummary=a=>(a||[]).map(x=>x.n+(x.q>1?'×'+x.q:'')).join('、');
+function foodCard(){
+  if(!isFood()||(!F.rest&&!(F.items||[]).length))return '';
+  const it=(F.items||[]).map(x=>`<div class="fc-r"><span class="fc-n">${esc(x.n)}</span><span class="fc-q">×${x.q}</span><span class="fc-p">${money(x.p)}</span><span class="fc-s">${money(x.q*x.p)}</span></div>`).join('');
+  return `<div class="fcard" data-p="dish"><div class="fc-h"><span>餐廳</span><b>${F.rest?esc(F.rest):'未填寫'}</b></div>
+  <div class="fc-t">餐點明細</div>${it||'<div class="fc-r" style="color:var(--sub)">尚未加入餐點</div>'}
+  <div class="fc-f"><span>金額</span><b>${money(itemsTotal(F.items))}</b></div></div>`;
+}
 function fixFood(){
   if(!isFood())return;F.items=F.items||[];
   if(!F.items.length&&calc(F.amt)>0)F.items=[{n:F.dish||'餐點',q:1,p:calc(F.amt)}];
@@ -1106,6 +1114,7 @@ function pageDraw(){
     <div class="pr d" data-p="tags"><span class="pl" style="${F.tags.length?'color:var(--tx)':''}">${F.tags.length?F.tags.map(x=>'#'+esc(x)).join(' '):'標籤'}</span><span class="pi">🏷️</span></div>
     <div class="pr d" data-p="photo"><span class="pl">收據照片最多3張</span><span class="pi">📷</span></div>
     ${F.ph.length?`<div class="thumbs">${F.ph.map((p,i)=>`<div class="th" data-p="viewph" data-i="${i}">${p.url?`<img src="${p.url}" alt="">`:'…'}</div>`).join('')}</div>`:''}
+    ${foodCard()}
     <textarea class="note" data-pf="note" placeholder="寫點備註吧...">${esc(F.note)}</textarea>
     ${F.id?'':`<label class="pr d"><span class="pl" style="color:var(--tx)">重複</span><select data-pf="rep"><option value="">不重複</option>${Object.entries(FREQ).map(([k,v])=>`<option value="${k}" ${F.rep===k?'selected':''}>${v}</option>`).join('')}</select></label>`}
     <div style="height:30px"></div></div>
