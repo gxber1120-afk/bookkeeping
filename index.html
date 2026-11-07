@@ -249,6 +249,7 @@ header.ctr h1{text-align:center}
 .meals .mchip{margin-left:6px;padding:5px 12px;border-radius:16px;border:1px solid var(--dim);background:none;color:var(--tx);font-size:15px}.meals .mchip.on{background:#4caf8f;border-color:#4caf8f;color:#000}.meals .pl{flex:1}
 #sheet .eatin{width:100%;box-sizing:border-box;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;caret-color:#4caf8f;outline:none;font-size:18px;padding:12px 2px;margin:4px 0 8px}#sheet .eatin::placeholder{color:var(--sub);-webkit-text-fill-color:var(--sub)}
 .ord{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--dim)}.ord .on{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ord button:not(.rdel){width:30px;height:30px;border-radius:50%;border:1px solid var(--dim);background:none;color:var(--tx);font-size:18px;line-height:1}.ord b{min-width:20px;text-align:center}.ord .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.ord .pin2{width:62px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:4px 2px}.ord small{min-width:44px;text-align:right;color:var(--sub)}.tot{display:flex;justify-content:space-between;padding:10px 2px;font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.chip .cx{margin-left:8px;color:#e5534b;font-weight:400}
 </style>
 </head>
 <body>
@@ -970,7 +971,7 @@ function openForm(init){
   const editing=!!(init&&init.id);
   F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
   F.tags=[...(F.tags||[])];
-  F.items=(F.items||[]).map(x=>({...x}));if(!F.items.length&&F.dish&&F.type==='e')F.items=[{n:F.dish,q:1,p:calc(F.amt)||0}];
+  F.items=(F.items||[]).map(x=>({...x}));fixFood();
   F.ph=(init&&init.photos||[]).map(id=>({id,url:null}));
   delete F.photos;
   const me=F;
@@ -981,52 +982,12 @@ function closeForm(){F=null;pageDraw();}
 /* ---------- 餐飲：餐別／餐廳／餐點 ---------- */
 const MEALS=['早餐','午餐','晚餐'];
 const eatDB=()=>(S.eat=S.eat||{rests:[],gen:[]});
-const isFood=()=>F&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)?.name==='餐飲';
+const isFood=()=>F&&F.mode!=='rec'&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)?.name==='餐飲';
 const dishList=()=>{const d=eatDB();if(F.rest){const r=d.rests.find(x=>x.name===F.rest);return r?r.dishes:[];}return d.gen;};
 function foodRows(){
   if(!isFood())return '';
   return `<div class="pr meals"><span class="pi">🕘</span><span class="pl">餐別</span>${MEALS.map(m=>`<button class="mchip ${F.meal===m?'on':''}" data-p="meal" data-v="${m}">${m}</button>`).join('')}</div>
-  <div class="pr" data-p="rest"><span class="pi">🏪</span><span class="pl">餐廳</span><span class="pv ${F.rest?'':'ph'}">${F.rest?esc(F.rest):'選擇或新增'}</span><span class="chv">›</span></div>
-  <div class="pr" data-p="dish"><span class="pi">🍱</span><span class="pl">餐點</span><span class="pv ${F.dish?'':'ph'}">${F.dish?esc(F.dish):'選擇或新增'}</span><span class="chv">›</span></div>`;
-}
-function eatSheet(kind){
-  const d=eatDB(),isR=kind==='rest';
-  const all=()=>isR?d.rests.map(r=>({n:r.name,s:r.dishes.length?r.dishes.length+' 道餐點':''})):dishList().map(x=>({n:x.n,s:x.p?money(x.p):''}));
-  const cur=()=>isR?F.rest:F.dish;
-  const listHtml=q=>{
-    const k=q.trim().toLowerCase(),its=all().map((x,i)=>({...x,i})).filter(x=>!k||x.n.toLowerCase().includes(k));
-    const exact=all().some(x=>x.n.toLowerCase()===k);
-    return (k&&!exact?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可儲存</span></div>`:'')
-      +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}${cur()===x.n?' ✓':''}</span><small>${esc(x.s)}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');
-  };
-  const commit=v=>{v=v.trim();if(!v)return;
-    if(isR){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v){F.dish='';F.items=[];}F.rest=v;}
-    else{const L=dishList();if(!L.some(x=>x.n===v))L.push({n:v,p:0});F.dish=v;}
-    save();pageDraw();};
-  sheet(`<h3>${isR?'餐廳':'餐點'+(F.rest?'・'+esc(F.rest):'')}</h3>
-    <input id="eatin" class="eatin" placeholder="${isR?'輸入餐廳名稱':'輸入餐點名稱'}" autocomplete="off">
-    <div id="eatlist">${listHtml('')}</div>
-    <button class="btn ghost" data-k="none">不選擇</button><button class="btn ghost" data-k="x">關閉</button>`,el=>{
-    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist');let down=null,done=false;
-    el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
-    inp.addEventListener('input',()=>{lst.innerHTML=listHtml(inp.value);});
-    inp.addEventListener('blur',()=>{setTimeout(()=>{
-      const k=down&&down.dataset.k;if(done||k==='pick'||k==='del'||k==='none')return;
-      if(inp.value.trim()){commit(inp.value);inp.value='';lst.innerHTML=listHtml('');}
-    },0);});
-    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
-      if(k==='x'){closeSheet();}
-      else if(k==='none'){done=true;F.rest='';F.dish='';F.items=[];closeSheet();pageDraw();}
-      else if(k==='pick'){done=true;
-        if(isR){const n=all()[i].n;if(F.rest!==n){F.dish='';F.items=[];}F.rest=n;}
-        else{const x=dishList()[i];F.dish=x.n;if(!F.amt&&x.p)F.amt=String(x.p);}
-        closeSheet();pageDraw();}
-      else if(k==='del'){if(!confirm('從清單刪除「'+all()[i].n+'」？（已記的帳不受影響）'))return;
-        if(isR){const n=all()[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';F.items=[];}}
-        else{const L=dishList();if(F.dish===L[i].n)F.dish='';L.splice(i,1);}
-        save();lst.innerHTML=listHtml(inp.value);pageDraw();}
-    };
-  });
+  <div class="pr" data-p="dish"><span class="pi">🍱</span><span class="pl">餐點明細</span><span class="pv ${(F.rest||F.dish)?'':'ph'}">${(F.rest||F.dish)?esc([F.rest,F.dish].filter(Boolean).join('：')):'餐廳與餐點'}</span><span class="chv">›</span></div>`;
 }
 function learnEat(t){
   const items=(t.items&&t.items.length)?t.items:(t.dish?[{n:t.dish,q:1,p:t.amt}]:[]);
@@ -1036,35 +997,55 @@ function learnEat(t){
 }
 const itemsTotal=a=>(a||[]).reduce((s,x)=>s+(+x.q||0)*(+x.p||0),0);
 const dishSummary=a=>(a||[]).map(x=>x.n+(x.q>1?'×'+x.q:'')).join('、');
+function fixFood(){
+  if(!isFood())return;F.items=F.items||[];
+  if(!F.items.length&&calc(F.amt)>0)F.items=[{n:F.dish||'餐點',q:1,p:calc(F.amt)}];
+  F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';
+}
 function dishSheet(){
   const d=eatDB();F.items=F.items||[];
-  const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);if(t>0)F.amt=String(Math.round(t*100)/100);pageDraw();};
+  const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
   const ordHtml=()=>F.items.length?F.items.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入餐點，輸入名稱或從下方選擇</div>';
+  const restHtml=q=>{const k=q.trim().toLowerCase();
+    const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n!==F.rest&&(!k||x.n.toLowerCase().includes(k)));
+    return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="prest" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
   const savedHtml=q=>{const k=q.trim().toLowerCase(),L=dishList();
     const its=L.map((x,i)=>({...x,i})).filter(x=>!k||x.n.toLowerCase().includes(k));
     return (k&&!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
      +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
-  sheet(`<h3>餐點${F.rest?'・'+esc(F.rest):''}</h3>
+  sheet(`<h3>餐點明細</h3>
+    <div class="sech" style="margin:0 -2px">餐廳</div>
+    <input id="restin" class="eatin" placeholder="輸入餐廳名稱，點其他位置儲存" autocomplete="off" value="${esc(F.rest)}">
+    <div id="restl">${restHtml('')}</div>
+    <div class="sech" style="margin:8px -2px 0">餐點</div>
     <div id="ordl">${ordHtml()}</div>
     <div class="tot">總計 <b id="otot">${money(itemsTotal(F.items))}</b></div>
     <input id="eatin" class="eatin" placeholder="輸入餐點名稱，點其他位置加入" autocomplete="off">
     <div id="eatlist">${savedHtml('')}</div>
     <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空餐點</button>`,el=>{
-    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl');let down=null;
+    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl'),rin=el.querySelector('#restin'),rl=el.querySelector('#restl');let down=null;
     const addItem=(n,p)=>{const f=F.items.find(x=>x.n===n);if(f)f.q++;else F.items.push({n,q:1,p:p||0});};
-    const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(itemsTotal(F.items));lst.innerHTML=savedHtml(inp.value);sync();};
+    const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(itemsTotal(F.items));lst.innerHTML=savedHtml(inp.value);rl.innerHTML=restHtml(rin.value);sync();};
+    const commitRest=()=>{const v=rin.value.trim();if(v===F.rest)return;
+      if(v&&!d.rests.some(r=>r.name===v)){d.rests.push({id:uid(),name:v,dishes:[]});save();}
+      F.rest=v;redraw();};
     const commitTyped=()=>{const v=inp.value.trim();if(!v)return;const L=dishList(),s=L.find(x=>x.n===v);if(!s){L.push({n:v,p:0});save();}addItem(v,s?s.p:0);inp.value='';redraw();};
     el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
     inp.addEventListener('input',()=>{lst.innerHTML=savedHtml(inp.value);});
-    inp.addEventListener('blur',()=>{setTimeout(()=>{const k=down&&down.dataset.k;if(k&&k!=='x'&&k!=='ok'&&k!=='clr')return;commitTyped();},0);});
+    rin.addEventListener('input',()=>{rl.innerHTML=restHtml(rin.value);});
+    const skip=()=>{const k=down&&down.dataset.k;return k&&!['x','ok','clr'].includes(k);};
+    inp.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitTyped();},0);});
+    rin.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitRest();},0);});
     el.addEventListener('input',e=>{const t=e.target;if(t.dataset.k!=='price')return;const i=+t.dataset.i;F.items[i].p=parseFloat(t.value)||0;
       el.querySelector('#sb'+i).textContent=money(F.items[i].q*F.items[i].p);el.querySelector('#otot').textContent=money(itemsTotal(F.items));sync();});
     el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
-      if(k==='ok'){commitTyped();closeSheet();pageDraw();}
-      else if(k==='clr'){F.items=[];F.dish='';redraw();}
+      if(k==='ok'){commitRest();commitTyped();closeSheet();pageDraw();}
+      else if(k==='clr'){F.items=[];redraw();}
       else if(k==='inc'){F.items[i].q++;redraw();}
       else if(k==='dec'){if(F.items[i].q>1)F.items[i].q--;else F.items.splice(i,1);redraw();}
       else if(k==='rm'){F.items.splice(i,1);redraw();}
+      else if(k==='prest'){F.rest=d.rests[i].name;rin.value=F.rest;redraw();}
+      else if(k==='delr'){ev.stopPropagation();const n=d.rests[i].name;if(!confirm('從清單刪除餐廳「'+n+'」？（已記的帳不受影響）'))return;d.rests.splice(i,1);if(F.rest===n){F.rest='';rin.value='';}save();redraw();}
       else if(k==='pick'){const x=dishList()[i];addItem(x.n,x.p);inp.value='';redraw();}
       else if(k==='del'){const L=dishList();if(!confirm('從常用清單刪除「'+L[i].n+'」？（已記的帳不受影響）'))return;L.splice(i,1);save();lst.innerHTML=savedHtml(inp.value);}
     };
@@ -1115,7 +1096,7 @@ function pageDraw(){
   }else{
     const c=S.cats[F.type]?.find(x=>x.id===F.cat),bl=budgetLeft(),d=new Date(F.date+'T00:00:00');
     const row=(ic,label,val,p,sub)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv">${val}${sub?`<small>${sub}</small>`:''}</span><span class="chv">›</span></div>`;
-    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':'輸入金額')}</span></div>`;
+    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'由餐點明細自動計算':'輸入金額'))}</span></div>`;
     html=`<div class="pg-h"><button class="l x" data-p="close">✕</button><div class="seg3">${[['e','支出'],['i','收入'],['t','轉帳']].map(([k,n])=>`<button data-p="type" data-v="${k}" class="${F.type===k?'on':''}">${n}</button>`).join('')}</div><button class="r" data-p="save">儲存</button></div>
     <div class="pg-b"><label class="pg-date"><span>${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日週${W[d.getDay()]}</span><input type="date" data-pf="date" value="${F.date}"></label>
     ${amtRow('🪙','金額','v-amt','amt','amt')}
@@ -1133,7 +1114,7 @@ function pageDraw(){
     <div class="kp"><div class="kp-top"><button data-k="00">00</button><button data-k="000">000</button><span class="sp"></span><button data-p="done">完成</button></div>
     <div class="kp-g">${['÷','7','8','9','×','4','5','6','−','1','2','3','+','.','0','⌫'].map(k=>`<button class="${isOp(k)?'op':''}" data-k="${k}">${k}</button>`).join('')}</div></div>`;
   }
-  el.classList.add('on');el.classList.toggle('kp-on',!!F.kp&&F.page==='main');
+  el.classList.add('on');el.classList.toggle('kp-on',!!F.kp&&F.page==='main'&&!isFood());
   el.innerHTML=html;
   const b=el.querySelector('.pg-b');if(b)b.scrollTop=sc;
 }
@@ -1173,13 +1154,13 @@ async function saveForm(again){
 const PGACT={
   close(){if(F.mode!=='rec'&&(F.amt||F.note)&&!F.id&&!confirm('放棄這筆記錄？'))return;closeForm();},
   back(){F.page='main';F.q='';F.cedit=false;pageDraw();},
-  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';pageDraw();},
-  amt(){F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
+  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';fixFood();pageDraw();},
+  amt(){if(isFood()){document.activeElement&&document.activeElement.blur();dishSheet();return;}F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
   fee(){F.kt='fee';F.kp=true;pageDraw();},
   done(){F[F.kt]=F[F.kt]?String(calc(F[F.kt])||''):'';F.kp=false;pageDraw();},
-  meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},rest(){eatSheet('rest');},dish(){dishSheet();},
+  meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},dish(){dishSheet();},
   cat(){F.page='cat';pageDraw();},acc(){F.page='acc';F.q='';pageDraw();},to(){F.page='to';F.q='';pageDraw();},member(){F.page='member';F.q='';pageDraw();},
-  pickcat(el){F.cat=el.dataset.id;F.page='main';pageDraw();},
+  pickcat(el){F.cat=el.dataset.id;F.page='main';fixFood();pageDraw();},
   pick(el){const id=el.dataset.id;if(F.page==='acc')F.acc=id;else if(F.page==='to')F.to=id;else F.member=id;F.page='main';F.q='';pageDraw();},
   newcat(){F.nc={id:null,name:'',icon:'🍴',tab:'c'};F.page='newcat';pageDraw();},
   catedit(el){const c=S.cats[F.type].find(x=>x.id===el.dataset.id);if(!c)return;F.nc={id:c.id,name:c.name,icon:c.icon,tab:'c'};F.page='newcat';pageDraw();},
