@@ -247,7 +247,8 @@ label>input,label>select{flex:1;max-width:62%;text-align:right;border:0;backgrou
 header.ctr h1{text-align:center}
 .mrow small{font-size:16px}
 .meals .mchip{margin-left:6px;padding:5px 12px;border-radius:16px;border:1px solid var(--dim);background:none;color:var(--tx);font-size:15px}.meals .mchip.on{background:#4caf8f;border-color:#4caf8f;color:#000}.meals .pl{flex:1}
-#sheet .eatin{width:100%;box-sizing:border-box;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;caret-color:#4caf8f;outline:none;font-size:18px;padding:12px 2px;margin:4px 0 8px}#sheet .eatin::placeholder{color:var(--sub)}
+#sheet .eatin{width:100%;box-sizing:border-box;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;caret-color:#4caf8f;outline:none;font-size:18px;padding:12px 2px;margin:4px 0 8px}#sheet .eatin::placeholder{color:var(--sub);-webkit-text-fill-color:var(--sub)}
+.ord{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--dim)}.ord .on{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ord button:not(.rdel){width:30px;height:30px;border-radius:50%;border:1px solid var(--dim);background:none;color:var(--tx);font-size:18px;line-height:1}.ord b{min-width:20px;text-align:center}.ord .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.ord .pin2{width:62px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:4px 2px}.ord small{min-width:44px;text-align:right;color:var(--sub)}.tot{display:flex;justify-content:space-between;padding:10px 2px;font-size:17px}
 </style>
 </head>
 <body>
@@ -967,8 +968,9 @@ function updVals(){
 }
 function openForm(init){
   const editing=!!(init&&init.id);
-  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
+  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
   F.tags=[...(F.tags||[])];
+  F.items=(F.items||[]).map(x=>({...x}));if(!F.items.length&&F.dish&&F.type==='e')F.items=[{n:F.dish,q:1,p:calc(F.amt)||0}];
   F.ph=(init&&init.photos||[]).map(id=>({id,url:null}));
   delete F.photos;
   const me=F;
@@ -998,7 +1000,7 @@ function eatSheet(kind){
       +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}${cur()===x.n?' ✓':''}</span><small>${esc(x.s)}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');
   };
   const commit=v=>{v=v.trim();if(!v)return;
-    if(isR){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v)F.dish='';F.rest=v;}
+    if(isR){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v){F.dish='';F.items=[];}F.rest=v;}
     else{const L=dishList();if(!L.some(x=>x.n===v))L.push({n:v,p:0});F.dish=v;}
     save();pageDraw();};
   sheet(`<h3>${isR?'餐廳':'餐點'+(F.rest?'・'+esc(F.rest):'')}</h3>
@@ -1014,22 +1016,59 @@ function eatSheet(kind){
     },0);});
     el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
       if(k==='x'){closeSheet();}
-      else if(k==='none'){done=true;if(isR){F.rest='';F.dish='';}else F.dish='';closeSheet();pageDraw();}
+      else if(k==='none'){done=true;F.rest='';F.dish='';F.items=[];closeSheet();pageDraw();}
       else if(k==='pick'){done=true;
-        if(isR){const n=all()[i].n;if(F.rest!==n)F.dish='';F.rest=n;}
+        if(isR){const n=all()[i].n;if(F.rest!==n){F.dish='';F.items=[];}F.rest=n;}
         else{const x=dishList()[i];F.dish=x.n;if(!F.amt&&x.p)F.amt=String(x.p);}
         closeSheet();pageDraw();}
       else if(k==='del'){if(!confirm('從清單刪除「'+all()[i].n+'」？（已記的帳不受影響）'))return;
-        if(isR){const n=all()[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';}}
+        if(isR){const n=all()[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';F.items=[];}}
         else{const L=dishList();if(F.dish===L[i].n)F.dish='';L.splice(i,1);}
         save();lst.innerHTML=listHtml(inp.value);pageDraw();}
     };
   });
 }
 function learnEat(t){
-  if(!t.rest&&!t.dish)return;const d=eatDB();let r=null;
+  const items=(t.items&&t.items.length)?t.items:(t.dish?[{n:t.dish,q:1,p:t.amt}]:[]);
+  if(!t.rest&&!items.length)return;const d=eatDB();let r=null;
   if(t.rest){r=d.rests.find(x=>x.name===t.rest);if(!r){r={id:uid(),name:t.rest,dishes:[]};d.rests.push(r);}}
-  if(t.dish){const L=r?r.dishes:d.gen;let x=L.find(y=>y.n===t.dish);if(!x){x={n:t.dish,p:0};L.push(x);}x.p=t.amt;}
+  items.forEach(it=>{const L=r?r.dishes:d.gen;let x=L.find(y=>y.n===it.n);if(!x){x={n:it.n,p:0};L.push(x);}if(it.p>0)x.p=it.p;});
+}
+const itemsTotal=a=>(a||[]).reduce((s,x)=>s+(+x.q||0)*(+x.p||0),0);
+const dishSummary=a=>(a||[]).map(x=>x.n+(x.q>1?'×'+x.q:'')).join('、');
+function dishSheet(){
+  const d=eatDB();F.items=F.items||[];
+  const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);if(t>0)F.amt=String(Math.round(t*100)/100);pageDraw();};
+  const ordHtml=()=>F.items.length?F.items.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入餐點，輸入名稱或從下方選擇</div>';
+  const savedHtml=q=>{const k=q.trim().toLowerCase(),L=dishList();
+    const its=L.map((x,i)=>({...x,i})).filter(x=>!k||x.n.toLowerCase().includes(k));
+    return (k&&!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
+     +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
+  sheet(`<h3>餐點${F.rest?'・'+esc(F.rest):''}</h3>
+    <div id="ordl">${ordHtml()}</div>
+    <div class="tot">總計 <b id="otot">${money(itemsTotal(F.items))}</b></div>
+    <input id="eatin" class="eatin" placeholder="輸入餐點名稱，點其他位置加入" autocomplete="off">
+    <div id="eatlist">${savedHtml('')}</div>
+    <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空餐點</button>`,el=>{
+    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl');let down=null;
+    const addItem=(n,p)=>{const f=F.items.find(x=>x.n===n);if(f)f.q++;else F.items.push({n,q:1,p:p||0});};
+    const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(itemsTotal(F.items));lst.innerHTML=savedHtml(inp.value);sync();};
+    const commitTyped=()=>{const v=inp.value.trim();if(!v)return;const L=dishList(),s=L.find(x=>x.n===v);if(!s){L.push({n:v,p:0});save();}addItem(v,s?s.p:0);inp.value='';redraw();};
+    el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
+    inp.addEventListener('input',()=>{lst.innerHTML=savedHtml(inp.value);});
+    inp.addEventListener('blur',()=>{setTimeout(()=>{const k=down&&down.dataset.k;if(k&&k!=='x'&&k!=='ok'&&k!=='clr')return;commitTyped();},0);});
+    el.addEventListener('input',e=>{const t=e.target;if(t.dataset.k!=='price')return;const i=+t.dataset.i;F.items[i].p=parseFloat(t.value)||0;
+      el.querySelector('#sb'+i).textContent=money(F.items[i].q*F.items[i].p);el.querySelector('#otot').textContent=money(itemsTotal(F.items));sync();});
+    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
+      if(k==='ok'){commitTyped();closeSheet();pageDraw();}
+      else if(k==='clr'){F.items=[];F.dish='';redraw();}
+      else if(k==='inc'){F.items[i].q++;redraw();}
+      else if(k==='dec'){if(F.items[i].q>1)F.items[i].q--;else F.items.splice(i,1);redraw();}
+      else if(k==='rm'){F.items.splice(i,1);redraw();}
+      else if(k==='pick'){const x=dishList()[i];addItem(x.n,x.p);inp.value='';redraw();}
+      else if(k==='del'){const L=dishList();if(!confirm('從常用清單刪除「'+L[i].n+'」？（已記的帳不受影響）'))return;L.splice(i,1);save();lst.innerHTML=savedHtml(inp.value);}
+    };
+  });
 }
 function budgetLeft(){
   const bd=budOf('m',F.date.slice(0,7));if(F.type!=='e'||!bd||!(bd.cats&&bd.cats[F.cat]>0))return null;
@@ -1122,7 +1161,7 @@ async function saveForm(again){
   if(F.type==='t'&&(!F.to||F.to===F.acc))return alert('轉出與轉入帳戶不能相同');
   const old=F.id?S.tx.find(t=>t.id===F.id):null;
   const t={id:F.id||uid(),ts:old?.ts||Date.now(),book:old?.book||S.cur,type:F.type,amt,cat:F.type==='t'?'':F.cat,acc:F.acc,to:F.type==='t'?F.to:'',fee:F.type==='t'?calc(F.fee):0,date:F.date,note:String(F.note).trim(),member:F.type==='t'?'':F.member,tags:[...F.tags],photos:F.ph.map(p=>p.id)};
-  if(isFood()){t.meal=F.meal||'';t.rest=F.rest||'';t.dish=F.dish||'';learnEat(t);}
+  if(isFood()){t.meal=F.meal||'';t.rest=F.rest||'';t.dish=dishSummary(F.items)||F.dish||'';t.items=F.items.filter(x=>x.n).map(x=>({...x}));learnEat(t);}
   try{for(const p of F.ph)if(p.n&&p.url)await idb.put(p.id,p.url);for(const id of F.delPh)await idb.del(id);}catch(e){alert('照片儲存失敗，這筆記錄仍會儲存');t.photos=[];}
   if(old)S.tx[S.tx.findIndex(x=>x.id===t.id)]=t;else S.tx.push(t);
   if(!F.id&&F.rep){S.recurring.push({id:uid(),book:t.book,type:t.type,name:t.note,amt,cat:t.cat,acc:t.acc,to:t.to,fee:t.fee||0,member:t.member||'',tags:[...t.tags],rule:F.rep,start:F.date,end:'',byCount:false,count:0,adj:'none',n:1});runRecurring();}
@@ -1138,7 +1177,7 @@ const PGACT={
   amt(){F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
   fee(){F.kt='fee';F.kp=true;pageDraw();},
   done(){F[F.kt]=F[F.kt]?String(calc(F[F.kt])||''):'';F.kp=false;pageDraw();},
-  meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},rest(){eatSheet('rest');},dish(){eatSheet('dish');},
+  meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},rest(){eatSheet('rest');},dish(){dishSheet();},
   cat(){F.page='cat';pageDraw();},acc(){F.page='acc';F.q='';pageDraw();},to(){F.page='to';F.q='';pageDraw();},member(){F.page='member';F.q='';pageDraw();},
   pickcat(el){F.cat=el.dataset.id;F.page='main';pageDraw();},
   pick(el){const id=el.dataset.id;if(F.page==='acc')F.acc=id;else if(F.page==='to')F.to=id;else F.member=id;F.page='main';F.q='';pageDraw();},
