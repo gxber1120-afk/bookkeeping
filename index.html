@@ -1266,7 +1266,7 @@ function fixTrip(){
 function tripCard(){
   if(!isTrip()||(!F.place&&!(F.titems||[]).length))return '';
   const it=(F.titems||[]).map(x=>`<div class="fc-r"><span class="fc-n">${esc(x.n)}</span><span class="fc-q">×${x.q}</span><span class="fc-p">${money(x.p)}</span><span class="fc-s">${money(x.q*x.p)}</span></div>`).join('');
-  return `<div class="fcard" data-p="trip"><div class="fc-h"><span>住宿地</span><b>${F.place?esc(F.place):'未填寫'}</b></div>
+  return `<div class="fcard" data-p="trip"><div class="fc-h"><span>旅遊地</span><b>${F.place?esc(F.place):'未填寫'}</b></div>
   <div class="fc-t">旅遊明細</div>${it||'<div class="fc-r" style="color:var(--sub)">尚未加入活動</div>'}
   <div class="fc-f"><span>金額</span><b>${money(itemsTotal(F.titems))}</b></div></div>`;
 }
@@ -1283,7 +1283,7 @@ function tripSheet(){
     return (!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
      +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
   sheet(`<h3>旅遊明細</h3>
-    <div class="frow"><span>住宿地：</span><input id="plin" class="eatin" placeholder="旅遊地點說明" autocomplete="off" value="${esc(F.place)}"></div>
+    <div class="frow"><span>旅遊地：</span><input id="plin" class="eatin" placeholder="旅遊地點說明" autocomplete="off" value="${esc(F.place)}"></div>
     <div id="pll">${placeHtml('')}</div>
     <div id="ordl">${ordHtml()}</div>
     <div class="tot">總計 <b id="otot">${money(itemsTotal(F.titems))}</b></div>
