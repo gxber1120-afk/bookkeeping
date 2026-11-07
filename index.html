@@ -253,6 +253,17 @@ header.ctr h1{text-align:center}
 .frow{display:flex;align-items:center;gap:6px;font-size:17px}.frow span{white-space:nowrap}.frow .eatin{flex:1;min-width:0}
 .fcard{margin:12px 14px 12px;padding:12px 14px;border-radius:12px;background:var(--dim);font-size:15px}.fc-h,.fc-f{display:flex;justify-content:space-between;gap:10px}.fc-h b,.fc-f b{font-weight:600}.fc-t{margin:10px 0 4px;color:var(--sub);font-size:13px}.fc-r{display:flex;gap:8px;padding:3px 0}.fc-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc-q{color:var(--sub);min-width:28px}.fc-p{color:var(--sub);min-width:40px;text-align:right}.fc-s{min-width:50px;text-align:right}.fc-f{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .pr .pv:has(.ai){margin-left:auto;flex:none}
+#spage{position:fixed;inset:0;max-width:520px;margin:0 auto;background:var(--bg);z-index:12;display:none;flex-direction:column;color:var(--tx)}#spage.on{display:flex}
+.sbar{display:flex;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px}.sf{flex:1;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:0 12px;height:46px;color:var(--sub)}
+.sf input{flex:1;min-width:0;background:transparent!important;border:0;outline:none;color:var(--tx)!important;-webkit-text-fill-color:var(--tx);font-size:19px;caret-color:#3b82f6}.sf input::placeholder{-webkit-text-fill-color:var(--sub)}
+.sx{width:26px;height:26px;border-radius:50%;border:0;background:#6b6b70;color:#000;font-size:13px;line-height:26px;padding:0}.sc{background:none;border:0;color:#3b82f6;font-size:18px;white-space:nowrap;flex:none}
+.schips{display:flex;gap:10px;overflow-x:auto;padding:10px 14px;border-top:1px solid var(--line);scrollbar-width:none}.schips::-webkit-scrollbar{display:none}
+.schip{flex:none;border:1px solid #555;background:none;color:var(--tx);border-radius:22px;padding:8px 14px;font-size:15px;white-space:nowrap}.schip small{margin-left:5px;font-size:11px}.schip.on{border-color:#3b82f6;color:#3b82f6}
+.sbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.sstat{display:flex;padding:14px 0 10px;text-align:center}.sstat>div{flex:1}.sstat b{display:block;font-size:22px;font-weight:500}.sstat small{color:var(--sub);font-size:16px}
+.semp{text-align:center;color:var(--sub);padding:60px 0;font-size:16px}.semp svg{display:block;margin:0 auto 10px}
+.pills{margin-top:4px}.tgp{display:inline-block;background:#0a84ff;color:#fff;border-radius:12px;padding:2px 10px;font-size:13px;margin-right:6px}
+#smenu{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:12px;width:230px;background:#2b2b2e;border-radius:14px;z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.5);overflow:hidden}
+.smi{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;font-size:18px;border-bottom:1px solid #3a3a3d;color:#fff}.smi:last-child{border:0}.smic{color:#bbb}
 </style>
 </head>
 <body>
@@ -267,6 +278,7 @@ header.ctr h1{text-align:center}
   </nav>
 </div>
 <div id="rpage"></div>
+<div id="spage"></div>
 <div id="apage"></div>
 <div id="bpage"></div>
 <div id="page"></div>
@@ -344,9 +356,114 @@ function closeSheet(){const s=$('#sheet');s.classList.remove('on');s.innerHTML='
 function row(t,wd){
   const c=t.type==='t'?{icon:'🔁',name:'轉帳'}:(S.cats[t.type].find(x=>x.id===t.cat)||{icon:'❓',name:'未分類'});
   const who=t.type==='t'?accName(t.acc)+' → '+accName(t.to):(t.member||'自己');
-  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.note,(t.tags||[]).map(x=>'#'+x).join(' ')].filter(Boolean).join(' | ');
+  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.note].filter(Boolean).join(' | ');
+  const pills=(t.tags||[]).length?`<div class="pills">${t.tags.map(x=>`<span class="tgp">${esc(x)}</span>`).join('')}</div>`:'';
   const right=t.type==='t'?(t.fee?'手續費 '+t.fee:''):accName(t.acc);
-  return `<div class="row" data-act="edit" data-id="${t.id}"><span class="ic">${c.icon}</span><div class="mid"><b>${esc(c.name)}${t.photos&&t.photos.length?' 🧾':''}</b><small>${esc(sub)}</small></div><div class="rt"><span class="amt ${t.type}">${money(t.amt)}</span><small>${esc(right)}</small></div><span class="mo">⋮</span></div>`;
+  return `<div class="row" data-act="edit" data-id="${t.id}"><span class="ic">${c.icon}</span><div class="mid"><b>${esc(c.name)}${t.photos&&t.photos.length?' 🧾':''}</b><small>${esc(sub)}</small>${pills}</div><div class="rt"><span class="amt ${t.type}">${money(t.amt)}</span><small>${esc(right)}</small></div><span class="mo">⋮</span></div>`;
+}
+/* ---------- 搜尋頁（全螢幕） ---------- */
+let SP=null;
+const SQ0=()=>({tags:[],extag:[],type:'',cats:[],accs:[],members:[]});
+function openSearch(mode){SP={mode,q:'',f:SQ0()};sDraw(true);setTimeout(()=>{const i=$('#sq');if(i)i.focus();},60);}
+const allTags=()=>[...new Set([...S.tx.flatMap(t=>t.tags||[]),...(S.tags||[])])];
+function sMatch(t){
+  if(SP.mode==='x'&&t.type==='t')return false;
+  if(SP.mode==='t'&&t.type!=='t')return false;
+  const f=SP.f;
+  if(f.type&&t.type!==f.type)return false;
+  if(f.cats.length&&!f.cats.includes(t.cat))return false;
+  if(f.accs.length&&!(f.accs.includes(t.acc)||f.accs.includes(t.to)))return false;
+  if(f.members.length&&!f.members.includes(t.member||'自己'))return false;
+  const tg=t.tags||[];
+  if(f.tags.length&&!f.tags.some(x=>tg.includes(x)))return false;
+  if(f.extag.length&&f.extag.some(x=>tg.includes(x)))return false;
+  const q=SP.q.trim().toLowerCase();
+  if(q){
+    const c=t.type==='t'?'轉帳':(S.cats[t.type].find(x=>x.id===t.cat)?.name||'');
+    const hay=[t.note,c,t.member,accName(t.acc),t.to?accName(t.to):'',tg.join(' '),String(t.amt),t.meal,t.rest,t.dish,t.src,(t.items||[]).map(x=>x.n).join(' '),(t.sitems||[]).map(x=>x.n).join(' ')].join(' ').toLowerCase();
+    if(!q.split(/\s+/).every(w=>hay.includes(w)))return false;
+  }
+  return true;
+}
+function sResults(){
+  let list=bookTx().filter(sMatch);
+  if(SP.mode==='r')list=list.sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,100);
+  const dir=ui.asc?-1:1;
+  list.sort((a,b)=>dir*(b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0)));
+  if(SP.mode==='r')list.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  let inc=0,exp=0,fee=0,tr=0;
+  list.forEach(t=>{if(t.type==='i')inc+=t.amt;else if(t.type==='e')exp+=t.amt;else{tr+=t.amt;fee+=t.fee||0;}});
+  const stats=SP.mode==='t'
+    ?[[list.length,'筆數','z'],[money(tr),'轉帳金額','z'],[money(fee),'手續費','e']]
+    :[[money(inc),'收入','i'],[money(exp),'支出','e'],[money(inc-exp),'合計',inc-exp<0?'e':inc-exp>0?'i':'z']];
+  const sg=n=>(n>0?'+':n<0?'-':'')+money(Math.abs(n));
+  let body='';
+  if(!list.length)body='<div class="semp"><svg viewBox="0 0 24 24" width="70" height="70" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><path d="M16.5 16.5L21 21M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg><div>沒有記錄</div></div>';
+  else if(SP.mode==='r')body=list.map(t=>row(t,true)).join('');
+  else{
+    const g={};list.forEach(t=>(g[t.date.slice(0,7)]??=[]).push(t));
+    body=Object.keys(g).sort().sort(()=>0).sort((a,b)=>dir*b.localeCompare(a)).map(m=>{
+      const net=g[m].reduce((s,t)=>s+(t.type==='i'?t.amt:t.type==='e'?-t.amt:0),0);
+      return `<div class="gh">${m.slice(0,4)}年${+m.slice(5)}月 (${sg(net)})</div>`+g[m].map(t=>row(t,true)).join('');
+    }).join('');
+  }
+  return `<div class="sstat">${stats.map(([v,n,c])=>`<div><b class="${c}">${v}</b><small>${n}</small></div>`).join('')}</div>${body}`;
+}
+function sChips(){
+  const f=SP.f,t=SP.mode==='t';
+  const chip=(k,label,n)=>`<button class="schip ${n?'on':''}" data-s="${k}">${label}${n?' ('+n+')':''}<small>▾</small></button>`;
+  const tl=f.type==='i'?'收入類別':'支出類別';
+  return chip('tags','標籤',f.tags.length)+chip('extag','排除標籤',f.extag.length)
+    +(t?'':chip('type','收入/支出',f.type?1:0)+chip('cats',tl,f.cats.length))
+    +chip('accs','帳戶',f.accs.length)+(t?'':chip('members','成員',f.members.length));
+}
+function sDraw(full){
+  const el=$('#spage');
+  if(!SP){el.classList.remove('on');el.innerHTML='';return;}
+  if(full||!el.classList.contains('on')){
+    const ph={x:'按備註搜尋…',t:'按備註搜尋…',r:'按備註搜尋…'}[SP.mode];
+    el.innerHTML=`<div class="sbar"><div class="sf">${IC.search.replace('width="30" height="30"','width="22" height="22"')}<input id="sq" enterkeyhint="search" autocomplete="off" placeholder="${ph}" value="${esc(SP.q)}"><button class="sx" data-s="clr" style="${SP.q?'':'display:none'}">✕</button></div><button class="sc" data-s="close">取消</button></div>
+    <div class="schips" id="schips">${sChips()}</div><div class="sbody" id="sres">${sResults()}</div>`;
+    el.classList.add('on');return;
+  }
+  const c=$('#schips'),r=$('#sres');if(c)c.innerHTML=sChips();if(r)r.innerHTML=sResults();
+  const x=el.querySelector('.sx');if(x)x.style.display=SP.q?'':'none';
+}
+function sFilter(kind){
+  const f=SP.f;let title,items,key,single=false;
+  if(kind==='tags'||kind==='extag'){title=kind==='tags'?'標籤':'排除標籤';items=allTags().map(x=>({v:x,l:x}));key=kind;}
+  else if(kind==='cats'){const ty=f.type==='i'?'i':'e';title=ty==='i'?'收入類別':'支出類別';items=S.cats[ty].map(c=>({v:c.id,l:c.icon+' '+c.name}));key='cats';}
+  else if(kind==='accs'){title='帳戶';items=S.accounts.map(a=>({v:a.id,l:a.name}));key='accs';}
+  else if(kind==='members'){title='成員';items=['自己',...S.members.filter(m=>m!=='自己')].map(m=>({v:m,l:m}));key='members';}
+  else{title='收入/支出';items=[{v:'',l:'全部'},{v:'i',l:'收入'},{v:'e',l:'支出'}];key='type';single=true;}
+  const list=()=>items.length?items.map((x,i)=>{const on=single?f.type===x.v:f[key].includes(x.v);return `<div class="li"><span data-k="tog" data-i="${i}" style="flex:1;padding:8px 0">${esc(x.l)}</span>${on?'<span class="blue">✓</span>':''}</div>`;}).join(''):'<div class="li" style="color:var(--sub)">沒有可選項目</div>';
+  sheet(`<h3>${title}</h3><div id="fl">${list()}</div>${single?'':'<button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清除</button>'}<button class="btn ghost" data-k="x">關閉</button>`,el=>{
+    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k;
+      if(k==='x'||k==='ok'){closeSheet();}
+      else if(k==='clr'){f[key]=[];el.querySelector('#fl').innerHTML=list();sDraw();}
+      else if(k==='tog'){const x=items[+t.dataset.i];
+        if(single){if(f.type!==x.v)f.cats=[];f.type=x.v;closeSheet();sDraw();}
+        else{const a=f[key],j=a.indexOf(x.v);if(j<0)a.push(x.v);else a.splice(j,1);
+          if(key==='tags'){f.extag=f.extag.filter(y=>!f.tags.includes(y));}if(key==='extag'){f.tags=f.tags.filter(y=>!f.extag.includes(y));}
+          el.querySelector('#fl').innerHTML=list();sDraw();}}};});
+}
+(function initSearch(){
+  const pg=$('#spage');
+  pg.addEventListener('click',e=>{if(!SP)return;const b=e.target.closest('[data-s]');if(!b)return;const k=b.dataset.s;
+    if(k==='close'){SP=null;sDraw();}
+    else if(k==='clr'){SP.q='';const i=$('#sq');if(i){i.value='';i.focus();}sDraw();}
+    else sFilter(k);});
+  pg.addEventListener('input',e=>{if(!SP||e.target.id!=='sq')return;SP.q=e.target.value;sDraw();});
+  pg.addEventListener('keydown',e=>{if(e.target.id==='sq'&&e.key==='Enter')e.target.blur();});
+})();
+function closeSMenu(){const m=$('#smenu');if(m)m.remove();}
+function openSMenu(){
+  if($('#smenu'))return closeSMenu();
+  const m=document.createElement('div');m.id='smenu';
+  const I=(a,t,ic)=>`<div class="smi" data-act="${a}"><span>${t}</span><span class="smic">${ic}</span></div>`;
+  m.innerHTML=I('smx','搜尋收支','🔍')+I('smt','搜尋轉帳','🔁')+I('smr','最近的記錄','🕘')+I('smsort','排序'+(ui.asc?'（舊→新）':'（新→舊）'),'↕');
+  document.body.appendChild(m);
+  setTimeout(()=>document.addEventListener('click',closeSMenu,{once:true}),0);
 }
 function header(title,extra){
   return `<header><h1>${title}</h1>${extra||''}</header>`;
@@ -369,9 +486,9 @@ const IC={
   expand:`<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>`
 };
 function listBody(searching){
-  const list=bookTx().filter(t=>searching?matchQ(t):t.date.startsWith(ui.month)).sort((a,b)=>b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0));
+  const list=bookTx().filter(t=>searching?matchQ(t):t.date.startsWith(ui.month)).sort((a,b)=>(ui.asc?-1:1)*(b.date.localeCompare(a.date)||(b.ts||0)-(a.ts||0)));
   const g={};list.forEach(t=>(g[t.date]??=[]).push(t));
-  return Object.keys(g).sort().reverse().map(d=>{
+  return Object.keys(g).sort((a,b)=>(ui.asc?1:-1)*a.localeCompare(b)).map(d=>{
     let de=0,di=0;g[d].forEach(t=>{if(t.type==='e')de+=t.amt;else if(t.type==='i')di+=t.amt;else de+=t.fee||0;});
     return `<div class="dh"><span>${d.slice(5)} 週${W[new Date(d+'T00:00:00').getDay()]}</span><span>${di?'<span class="i">收 '+money(di)+'</span> ':''}${de?'<span class="e">支 '+money(de)+'</span>':''}</span></div>`+g[d].map(row).join('');
   }).join('')||'<div class="empty">還沒有記錄<br>點下方「記一筆」開始記帳</div>';
@@ -1367,7 +1484,7 @@ const act={
   mnext(){ui.month=mShift(ui.month,1);if(!ui.sel.startsWith(ui.month))ui.sel=ui.month+'-01';render();},
   add(){openForm();},
   edit(el){const t=S.tx.find(x=>x.id===el.dataset.id);if(t)openForm(Object.assign({},t,{amt:String(t.amt),fee:t.fee?String(t.fee):''}));},
-  qtoggle(){ui.qOn=!ui.qOn;if(!ui.qOn)ui.q='';render();if(ui.qOn)$('#q')?.focus();},
+  qtoggle(){openSMenu();},smx(){openSearch('x');},smt(){openSearch('t');},smr(){openSearch('r');},smsort(){ui.asc=!ui.asc;render();},
   selday(el){ui.sel=el.dataset.d;if(!ui.sel.startsWith(ui.month))ui.month=ui.sel.slice(0,7);render();},
   view(el){ui.view=el.dataset.v;render();},
   bookpick(){sheet('<h3>切換帳本</h3>'+S.books.map(b=>`<div class="li"><span data-k="p" data-id="${b.id}" style="flex:1;padding:6px 0">${esc(b.name)}${b.id===S.cur?' ✓':''}</span></div>`).join('')+'<button class="btn ghost" data-k="m">管理帳本</button>',el=>{
@@ -1469,6 +1586,7 @@ function render(){
   if(BP)bDraw();
   if(AP)aDraw();
   if(RP)rDraw();
+  if(SP)sDraw();
   const q=$('#q');if(q){
     // 注音／拼音輸入法組字中不重繪，等選字確定（compositionend）才套用搜尋，避免輸入法亂跳
     let comp=false;
