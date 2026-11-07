@@ -246,6 +246,7 @@ label>input,label>select{flex:1;max-width:62%;text-align:right;border:0;backgrou
 .sech{background:var(--dim);color:var(--sub);padding:9px 14px;font-size:15px}
 header.ctr h1{text-align:center}
 .mrow small{font-size:16px}
+.meals .mchip{margin-left:6px;padding:5px 12px;border-radius:16px;border:1px solid var(--dim);background:none;color:var(--tx);font-size:15px}.meals .mchip.on{background:#4caf8f;border-color:#4caf8f;color:#000}.meals .pl{flex:1}
 </style>
 </head>
 <body>
@@ -337,7 +338,7 @@ function closeSheet(){const s=$('#sheet');s.classList.remove('on');s.innerHTML='
 function row(t,wd){
   const c=t.type==='t'?{icon:'🔁',name:'轉帳'}:(S.cats[t.type].find(x=>x.id===t.cat)||{icon:'❓',name:'未分類'});
   const who=t.type==='t'?accName(t.acc)+' → '+accName(t.to):(t.member||'自己');
-  const sub=[wd?dLbl(t.date):'',who,t.note,(t.tags||[]).map(x=>'#'+x).join(' ')].filter(Boolean).join(' | ');
+  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.note,(t.tags||[]).map(x=>'#'+x).join(' ')].filter(Boolean).join(' | ');
   const right=t.type==='t'?(t.fee?'手續費 '+t.fee:''):accName(t.acc);
   return `<div class="row" data-act="edit" data-id="${t.id}"><span class="ic">${c.icon}</span><div class="mid"><b>${esc(c.name)}${t.photos&&t.photos.length?' 🧾':''}</b><small>${esc(sub)}</small></div><div class="rt"><span class="amt ${t.type}">${money(t.amt)}</span><small>${esc(right)}</small></div><span class="mo">⋮</span></div>`;
 }
@@ -965,7 +966,7 @@ function updVals(){
 }
 function openForm(init){
   const editing=!!(init&&init.id);
-  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
+  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
   F.tags=[...(F.tags||[])];
   F.ph=(init&&init.photos||[]).map(id=>({id,url:null}));
   delete F.photos;
@@ -974,6 +975,49 @@ function openForm(init){
   pageDraw();
 }
 function closeForm(){F=null;pageDraw();}
+/* ---------- 餐飲：餐別／餐廳／餐點 ---------- */
+const MEALS=['早餐','午餐','晚餐'];
+const eatDB=()=>(S.eat=S.eat||{rests:[],gen:[]});
+const isFood=()=>F&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)?.name==='餐飲';
+const dishList=()=>{const d=eatDB();if(F.rest){const r=d.rests.find(x=>x.name===F.rest);return r?r.dishes:[];}return d.gen;};
+function foodRows(){
+  if(!isFood())return '';
+  return `<div class="pr meals"><span class="pi">🕘</span><span class="pl">餐別</span>${MEALS.map(m=>`<button class="mchip ${F.meal===m?'on':''}" data-p="meal" data-v="${m}">${m}</button>`).join('')}</div>
+  <div class="pr" data-p="rest"><span class="pi">🏪</span><span class="pl">餐廳</span><span class="pv ${F.rest?'':'ph'}">${F.rest?esc(F.rest):'選擇或新增'}</span><span class="chv">›</span></div>
+  <div class="pr" data-p="dish"><span class="pi">🍱</span><span class="pl">餐點</span><span class="pv ${F.dish?'':'ph'}">${F.dish?esc(F.dish):'選擇或新增'}</span><span class="chv">›</span></div>`;
+}
+function eatSheet(kind){
+  const draw=()=>{
+    const d=eatDB(),items=kind==='rest'?d.rests.map(r=>({n:r.name,s:r.dishes.length?r.dishes.length+' 道餐點':''})):dishList().map(x=>({n:x.n,s:x.p?money(x.p):''}));
+    const cur=kind==='rest'?F.rest:F.dish;
+    sheet(`<h3>${kind==='rest'?'餐廳':'餐點'+(F.rest?'・'+esc(F.rest):'')}</h3>
+    <div class="li"><input id="eatin" placeholder="${kind==='rest'?'新增餐廳名稱':'新增餐點名稱'}" style="flex:1"><button class="chip add" data-k="add">新增</button></div>
+    ${items.map((x,i)=>`<div class="li"><span data-k="pick" data-i="${i}" style="flex:1;padding:6px 0">${esc(x.n)}${cur===x.n?' ✓':''}</span><small>${esc(x.s)}</small><button class="rdel" data-k="del" data-i="${i}">✕</button></div>`).join('')}
+    <button class="btn ghost" data-k="none">不選擇</button><button class="btn ghost" data-k="x">關閉</button>`,el=>{
+      el.onclick=ev=>{const k=ev.target.dataset.k,i=+ev.target.dataset.i;if(!k)return;
+        if(k==='x')closeSheet();
+        else if(k==='none'){if(kind==='rest'){F.rest='';F.dish='';}else F.dish='';closeSheet();pageDraw();}
+        else if(k==='add'){const v=el.querySelector('#eatin').value.trim();if(!v)return;
+          if(kind==='rest'){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v)F.dish='';F.rest=v;}
+          else{const L=dishList();if(!L.some(x=>x.n===v))L.push({n:v,p:0});F.dish=v;}
+          save();closeSheet();pageDraw();}
+        else if(k==='pick'){
+          if(kind==='rest'){const n=items[i].n;if(F.rest!==n)F.dish='';F.rest=n;}
+          else{const x=dishList()[i];F.dish=x.n;if(!F.amt&&x.p)F.amt=String(x.p);}
+          closeSheet();pageDraw();}
+        else if(k==='del'){if(!confirm('從清單刪除「'+items[i].n+'」？（已記的帳不受影響）'))return;
+          if(kind==='rest'){const n=items[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';}}
+          else{const L=dishList();if(F.dish===L[i].n)F.dish='';L.splice(i,1);}
+          save();draw();pageDraw();}
+      };});
+  };
+  draw();
+}
+function learnEat(t){
+  if(!t.rest&&!t.dish)return;const d=eatDB();let r=null;
+  if(t.rest){r=d.rests.find(x=>x.name===t.rest);if(!r){r={id:uid(),name:t.rest,dishes:[]};d.rests.push(r);}}
+  if(t.dish){const L=r?r.dishes:d.gen;let x=L.find(y=>y.n===t.dish);if(!x){x={n:t.dish,p:0};L.push(x);}x.p=t.amt;}
+}
 function budgetLeft(){
   const bd=budOf('m',F.date.slice(0,7));if(F.type!=='e'||!bd||!(bd.cats&&bd.cats[F.cat]>0))return null;
   const m=F.date.slice(0,7);let sp=0;
@@ -1025,7 +1069,7 @@ function pageDraw(){
     ${amtRow('🪙','金額','v-amt','amt','amt')}
     ${F.type==='t'
       ? row('🏦','轉出帳戶',esc(accName(F.acc)),'acc')+row('🏦','轉入帳戶',esc(accName(F.to)),'to')+amtRow('💸','手續費','v-fee','fee','fee')
-      : row(c?c.icon:'❓','類別',esc(c?c.name:'未分類'),'cat',bl!==null?'預算餘額:'+money(bl):'')+row('💳','帳戶',esc(accName(F.acc)),'acc')+row('👤','成員',esc(F.member||'自己'),'member')}
+      : row(c?c.icon:'❓','類別',esc(c?c.name:'未分類'),'cat',bl!==null?'預算餘額:'+money(bl):'')+row('💳','帳戶',esc(accName(F.acc)),'acc')+row('👤','成員',esc(F.member||'自己'),'member')+foodRows()}
     <div style="height:14px"></div>
     <div class="pr d" data-p="tags"><span class="pl" style="${F.tags.length?'color:var(--tx)':''}">${F.tags.length?F.tags.map(x=>'#'+esc(x)).join(' '):'標籤'}</span><span class="pi">🏷️</span></div>
     <div class="pr d" data-p="photo"><span class="pl">收據照片最多3張</span><span class="pi">📷</span></div>
@@ -1065,6 +1109,7 @@ async function saveForm(again){
   if(F.type==='t'&&(!F.to||F.to===F.acc))return alert('轉出與轉入帳戶不能相同');
   const old=F.id?S.tx.find(t=>t.id===F.id):null;
   const t={id:F.id||uid(),ts:old?.ts||Date.now(),book:old?.book||S.cur,type:F.type,amt,cat:F.type==='t'?'':F.cat,acc:F.acc,to:F.type==='t'?F.to:'',fee:F.type==='t'?calc(F.fee):0,date:F.date,note:String(F.note).trim(),member:F.type==='t'?'':F.member,tags:[...F.tags],photos:F.ph.map(p=>p.id)};
+  if(isFood()){t.meal=F.meal||'';t.rest=F.rest||'';t.dish=F.dish||'';learnEat(t);}
   try{for(const p of F.ph)if(p.n&&p.url)await idb.put(p.id,p.url);for(const id of F.delPh)await idb.del(id);}catch(e){alert('照片儲存失敗，這筆記錄仍會儲存');t.photos=[];}
   if(old)S.tx[S.tx.findIndex(x=>x.id===t.id)]=t;else S.tx.push(t);
   if(!F.id&&F.rep){S.recurring.push({id:uid(),book:t.book,type:t.type,name:t.note,amt,cat:t.cat,acc:t.acc,to:t.to,fee:t.fee||0,member:t.member||'',tags:[...t.tags],rule:F.rep,start:F.date,end:'',byCount:false,count:0,adj:'none',n:1});runRecurring();}
@@ -1080,6 +1125,7 @@ const PGACT={
   amt(){F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
   fee(){F.kt='fee';F.kp=true;pageDraw();},
   done(){F[F.kt]=F[F.kt]?String(calc(F[F.kt])||''):'';F.kp=false;pageDraw();},
+  meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},rest(){eatSheet('rest');},dish(){eatSheet('dish');},
   cat(){F.page='cat';pageDraw();},acc(){F.page='acc';F.q='';pageDraw();},to(){F.page='to';F.q='';pageDraw();},member(){F.page='member';F.q='';pageDraw();},
   pickcat(el){F.cat=el.dataset.id;F.page='main';pageDraw();},
   pick(el){const id=el.dataset.id;if(F.page==='acc')F.acc=id;else if(F.page==='to')F.to=id;else F.member=id;F.page='main';F.q='';pageDraw();},
@@ -1195,10 +1241,19 @@ const act={
     [...S.tx].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>rows.push([t.date,S.books.find(b=>b.id===t.book)?.name||'',{e:'支出',i:'收入',t:'轉帳'}[t.type],t.type==='t'?'':(S.cats[t.type].find(c=>c.id===t.cat)?.name||''),t.amt,accName(t.acc),t.type==='t'?accName(t.to):'',t.fee||'',t.member||'',(t.tags||[]).join(' '),t.note||'']));
     dl('ledger-'+today()+'.csv','\ufeff'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n'),'text/csv');
   },
-  backup(){dl('ledger-backup-'+today()+'.json',JSON.stringify(S),'application/json');},
+  async backup(){
+    const ph={};let miss=0;
+    for(const t of S.tx)for(const id of (t.photos||[])){try{const v=await idb.get(id);if(v)ph[id]=v;else miss++;}catch(e){miss++;}}
+    dl('ledger-backup-'+today()+'.json',JSON.stringify({...S,_photos:ph}),'application/json');
+    const n=Object.keys(ph).length;if(n||miss)alert('已備份，含 '+n+' 張照片'+(miss?'（'+miss+' 張找不到）':''));
+  },
   restore(){
     const i=document.createElement('input');i.type='file';i.accept='.json,application/json';
-    i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.books||!d.tx||!d.accounts)throw 0;if(confirm('還原會取代目前所有資料，確定？')){S=d;save();applyTheme();render();alert('還原完成');}}catch(e){alert('檔案格式不正確');}};
+    i.onchange=async()=>{try{const d=JSON.parse(await i.files[0].text());if(!d.books||!d.tx||!d.accounts)throw 0;
+      if(!confirm('還原會取代目前所有資料，確定？'))return;
+      const ph=d._photos||{};delete d._photos;let n=0;
+      for(const id of Object.keys(ph)){try{await idb.put(id,ph[id]);n++;}catch(e){}}
+      S=d;save();applyTheme();render();alert('還原完成'+(n?'，含 '+n+' 張照片':''));}catch(e){alert('檔案格式不正確');}};
     i.click();},
   wipe(){if(confirm('這會刪除所有資料且無法復原，確定？')&&confirm('再確認一次：真的要全部清除？')){S=seed();save();try{indexedDB.deleteDatabase('mdj_photos');}catch(e){}applyTheme();ui.tab='home';render();}}
 };
