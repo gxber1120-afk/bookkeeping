@@ -356,7 +356,7 @@ function closeSheet(){const s=$('#sheet');s.classList.remove('on');s.innerHTML='
 function row(t,wd){
   const c=t.type==='t'?{icon:'🔁',name:'轉帳'}:(S.cats[t.type].find(x=>x.id===t.cat)||{icon:'❓',name:'未分類'});
   const who=t.type==='t'?accName(t.acc)+' → '+accName(t.to):(t.member||'自己');
-  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.note].filter(Boolean).join(' | ');
+  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.place,t.tsum,t.note].filter(Boolean).join(' | ');
   const pills=(t.tags||[]).length?`<div class="pills">${t.tags.map(x=>`<span class="tgp">${esc(x)}</span>`).join('')}</div>`:'';
   const right=t.type==='t'?(t.fee?'手續費 '+t.fee:''):accName(t.acc);
   return `<div class="row" data-act="edit" data-id="${t.id}"><span class="ic">${c.icon}</span><div class="mid"><b>${esc(c.name)}${t.photos&&t.photos.length?' 🧾':''}</b><small>${esc(sub)}</small>${pills}</div><div class="rt"><span class="amt ${t.type}">${money(t.amt)}</span><small>${esc(right)}</small></div><span class="mo">⋮</span></div>`;
@@ -380,7 +380,7 @@ function sMatch(t){
   const q=SP.q.trim().toLowerCase();
   if(q){
     const c=t.type==='t'?'轉帳':(S.cats[t.type].find(x=>x.id===t.cat)?.name||'');
-    const hay=[t.note,c,t.member,accName(t.acc),t.to?accName(t.to):'',tg.join(' '),String(t.amt),t.meal,t.rest,t.dish,t.src,(t.items||[]).map(x=>x.n).join(' '),(t.sitems||[]).map(x=>x.n).join(' ')].join(' ').toLowerCase();
+    const hay=[t.note,c,t.member,accName(t.acc),t.to?accName(t.to):'',tg.join(' '),String(t.amt),t.meal,t.rest,t.dish,t.src,t.place,(t.titems||[]).map(x=>x.n).join(' '),(t.items||[]).map(x=>x.n).join(' '),(t.sitems||[]).map(x=>x.n).join(' ')].join(' ').toLowerCase();
     if(!q.split(/\s+/).every(w=>hay.includes(w)))return false;
   }
   return true;
@@ -1145,9 +1145,9 @@ function updVals(){
 }
 function openForm(init){
   const editing=!!(init&&init.id);
-  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],src:'',sitems:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
+  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],src:'',sitems:[],place:'',titems:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
   F.tags=[...(F.tags||[])];
-  F.items=(F.items||[]).map(x=>({...x}));F.sitems=(F.sitems||[]).map(x=>({n:x.n,a:x.a}));fixFood();fixSal();
+  F.items=(F.items||[]).map(x=>({...x}));F.sitems=(F.sitems||[]).map(x=>({n:x.n,a:x.a}));F.titems=(F.titems||[]).map(x=>({...x}));fixFood();fixSal();fixTrip();
   F.ph=(init&&init.photos||[]).map(id=>({id,url:null}));
   delete F.photos;
   const me=F;
@@ -1182,7 +1182,7 @@ function foodCard(){
 /* ---------- 收入：薪資明細 ---------- */
 const salDB=()=>(S.sal=S.sal||{srcs:[],gen:[]});
 const isSal=()=>F&&F.mode!=='rec'&&F.type==='i'&&S.cats.i.find(x=>x.id===F.cat)?.name==='薪資';
-const isLock=()=>isFood()||isSal();
+const isLock=()=>isFood()||isSal()||isTrip();
 const DEDUCT=/勞保|健保|福利金/;
 const salTotal=a=>(a||[]).reduce((s,x)=>s+(+x.a||0),0);
 const salList=()=>{const d=salDB();if(F.src){const r=d.srcs.find(x=>x.name===F.src);return r?r.items:[];}return d.gen;};
@@ -1246,6 +1246,75 @@ function salSheet(){
       else if(k==='delr'){ev.stopPropagation();const n=d.srcs[i].name;if(!confirm('從清單刪除「'+n+'」？（已記的帳不受影響）'))return;d.srcs.splice(i,1);if(F.src===n){F.src='';sin.value='';}save();redraw();}
       else if(k==='pick'){const x=salList()[i];addItem(x.n,x.a);inp.value='';redraw();}
       else if(k==='del'){const L=salList();if(!confirm('從常用清單刪除「'+L[i].n+'」？（已記的帳不受影響）'))return;L.splice(i,1);save();il.innerHTML=savedHtml(inp.value);}
+    };
+  });
+}
+/* ---------- 旅遊：旅遊明細 ---------- */
+const tripDB=()=>(S.trip=S.trip||{places:[],gen:[]});
+const isTrip=()=>F&&F.mode!=='rec'&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)?.name==='旅遊';
+const tripList=()=>{const d=tripDB();if(F.place){const r=d.places.find(x=>x.name===F.place);return r?r.items:[];}return d.gen;};
+function learnTrip(t){
+  const items=t.titems||[];if(!t.place&&!items.length)return;const d=tripDB();let r=null;
+  if(t.place){r=d.places.find(x=>x.name===t.place);if(!r){r={id:uid(),name:t.place,items:[]};d.places.push(r);}}
+  items.forEach(it=>{const L=r?r.items:d.gen;let x=L.find(y=>y.n===it.n);if(!x){x={n:it.n,p:0};L.push(x);}if(it.p>0)x.p=it.p;});
+}
+function fixTrip(){
+  if(!isTrip())return;F.titems=F.titems||[];
+  if(!F.titems.length&&calc(F.amt)>0)F.titems=[{n:'旅遊花費',q:1,p:calc(F.amt)}];
+  const t=itemsTotal(F.titems);F.amt=t>0?String(Math.round(t*100)/100):'';
+}
+function tripCard(){
+  if(!isTrip()||(!F.place&&!(F.titems||[]).length))return '';
+  const it=(F.titems||[]).map(x=>`<div class="fc-r"><span class="fc-n">${esc(x.n)}</span><span class="fc-q">×${x.q}</span><span class="fc-p">${money(x.p)}</span><span class="fc-s">${money(x.q*x.p)}</span></div>`).join('');
+  return `<div class="fcard" data-p="trip"><div class="fc-h"><span>住宿地</span><b>${F.place?esc(F.place):'未填寫'}</b></div>
+  <div class="fc-t">旅遊明細</div>${it||'<div class="fc-r" style="color:var(--sub)">尚未加入活動</div>'}
+  <div class="fc-f"><span>金額</span><b>${money(itemsTotal(F.titems))}</b></div></div>`;
+}
+function tripSheet(){
+  const d=tripDB();F.titems=F.titems||[];
+  const sync=()=>{const t=itemsTotal(F.titems);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
+  const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
+  const ordHtml=()=>F.titems.length?F.titems.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入活動</div>';
+  const placeHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
+    const its=d.places.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
+    return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="pplace" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delp" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
+  const savedHtml=q=>{const k=q.trim().toLowerCase(),L=tripList();if(!k)return '';
+    const its=L.map((x,i)=>({...x,i})).filter(x=>x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
+    return (!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
+     +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
+  sheet(`<h3>旅遊明細</h3>
+    <div class="frow"><span>住宿地：</span><input id="plin" class="eatin" placeholder="旅遊地點說明" autocomplete="off" value="${esc(F.place)}"></div>
+    <div id="pll">${placeHtml('')}</div>
+    <div id="ordl">${ordHtml()}</div>
+    <div class="tot">總計 <b id="otot">${money(itemsTotal(F.titems))}</b></div>
+    <div class="frow"><span>活動：</span><input id="eatin" class="eatin" placeholder="輸入活動或項目名稱" autocomplete="off"></div>
+    <div id="eatlist">${savedHtml('')}</div>
+    <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空活動</button>`,el=>{
+    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl'),pin=el.querySelector('#plin'),pl=el.querySelector('#pll');let down=null;
+    const addItem=(n,p)=>{const f=F.titems.find(x=>x.n===n);if(f)f.q++;else F.titems.push({n,q:1,p:p||0});};
+    const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(itemsTotal(F.titems));lst.innerHTML=savedHtml(inp.value);pl.innerHTML=placeHtml(pin.value);sync();};
+    const commitPlace=()=>{const v=pin.value.trim();if(v===F.place)return;
+      if(v&&!d.places.some(r=>r.name===v)){d.places.push({id:uid(),name:v,items:[]});save();}
+      F.place=v;redraw();};
+    const commitTyped=()=>{const v=inp.value.trim();if(!v)return;const L=tripList(),s=L.find(x=>x.n===v);if(!s){L.push({n:v,p:0});save();}addItem(v,s?s.p:0);inp.value='';redraw();};
+    el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
+    inp.addEventListener('input',()=>{lst.innerHTML=savedHtml(inp.value);});
+    pin.addEventListener('input',()=>{pl.innerHTML=placeHtml(pin.value);});
+    const skip=()=>{const k=down&&down.dataset.k;return k&&!['x','ok','clr'].includes(k);};
+    inp.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitTyped();},0);});
+    pin.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitPlace();},0);});
+    el.addEventListener('input',e=>{const t=e.target;if(t.dataset.k!=='price')return;const i=+t.dataset.i;F.titems[i].p=parseFloat(t.value)||0;
+      el.querySelector('#sb'+i).textContent=money(F.titems[i].q*F.titems[i].p);el.querySelector('#otot').textContent=money(itemsTotal(F.titems));sync();});
+    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
+      if(k==='ok'){commitPlace();commitTyped();closeSheet();pageDraw();}
+      else if(k==='clr'){F.titems=[];redraw();}
+      else if(k==='inc'){F.titems[i].q++;redraw();}
+      else if(k==='dec'){if(F.titems[i].q>1)F.titems[i].q--;else F.titems.splice(i,1);redraw();}
+      else if(k==='rm'){F.titems.splice(i,1);redraw();}
+      else if(k==='pplace'){F.place=d.places[i].name;pin.value=F.place;redraw();}
+      else if(k==='delp'){ev.stopPropagation();const n=d.places[i].name;if(!confirm('從清單刪除「'+n+'」？（已記的帳不受影響）'))return;d.places.splice(i,1);if(F.place===n){F.place='';pin.value='';}save();redraw();}
+      else if(k==='pick'){const x=tripList()[i];addItem(x.n,x.p);inp.value='';redraw();}
+      else if(k==='del'){const L=tripList();if(!confirm('從常用清單刪除「'+L[i].n+'」？（已記的帳不受影響）'))return;L.splice(i,1);save();lst.innerHTML=savedHtml(inp.value);}
     };
   });
 }
@@ -1347,7 +1416,7 @@ function pageDraw(){
   }else{
     const c=S.cats[F.type]?.find(x=>x.id===F.cat),bl=budgetLeft(),d=new Date(F.date+'T00:00:00');
     const row=(ic,label,val,p,sub)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv">${val}${sub?`<small>${sub}</small>`:''}</span><span class="chv">›</span></div>`;
-    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'點此填寫餐點明細':isSal()?'點此填寫薪資明細':'輸入金額'))}</span></div>`;
+    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'點此填寫餐點明細':isSal()?'點此填寫薪資明細':isTrip()?'點此填寫旅遊明細':'輸入金額'))}</span></div>`;
     html=`<div class="pg-h"><button class="l x" data-p="close">✕</button><div class="seg3">${[['e','支出'],['i','收入'],['t','轉帳']].map(([k,n])=>`<button data-p="type" data-v="${k}" class="${F.type===k?'on':''}">${n}</button>`).join('')}</div><button class="r" data-p="save">儲存</button></div>
     <div class="pg-b"><label class="pg-date"><span>${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日週${W[d.getDay()]}</span><input type="date" data-pf="date" value="${F.date}"></label>
     ${amtRow('🪙','金額','v-amt','amt','amt')}
@@ -1358,7 +1427,7 @@ function pageDraw(){
     <div class="pr d" data-p="tags"><span class="pl" style="${F.tags.length?'color:var(--tx)':''}">${F.tags.length?F.tags.map(x=>'#'+esc(x)).join(' '):'標籤'}</span><span class="pi">🏷️</span></div>
     <div class="pr d" data-p="photo"><span class="pl">收據照片最多3張</span><span class="pi">📷</span></div>
     ${F.ph.length?`<div class="thumbs">${F.ph.map((p,i)=>`<div class="th" data-p="viewph" data-i="${i}">${p.url?`<img src="${p.url}" alt="">`:'…'}</div>`).join('')}</div>`:''}
-    ${foodCard()}${salCard()}
+    ${foodCard()}${salCard()}${tripCard()}
     <textarea class="note" data-pf="note" placeholder="寫點備註吧...">${esc(F.note)}</textarea>
     ${F.id?'':`<label class="pr d"><span class="pl" style="color:var(--tx)">重複</span><select data-pf="rep"><option value="">不重複</option>${Object.entries(FREQ).map(([k,v])=>`<option value="${k}" ${F.rep===k?'selected':''}>${v}</option>`).join('')}</select></label>`}
     <div style="height:30px"></div></div>
@@ -1394,6 +1463,7 @@ async function saveForm(again){
   if(F.type==='t'&&(!F.to||F.to===F.acc))return alert('轉出與轉入帳戶不能相同');
   const old=F.id?S.tx.find(t=>t.id===F.id):null;
   const t={id:F.id||uid(),ts:old?.ts||Date.now(),book:old?.book||S.cur,type:F.type,amt,cat:F.type==='t'?'':F.cat,acc:F.acc,to:F.type==='t'?F.to:'',fee:F.type==='t'?calc(F.fee):0,date:F.date,note:String(F.note).trim(),member:F.type==='t'?'':F.member,tags:[...F.tags],photos:F.ph.map(p=>p.id)};
+  if(isTrip()){t.place=F.place||'';t.titems=F.titems.filter(x=>x.n).map(x=>({...x}));t.tsum=dishSummary(t.titems);learnTrip(t);}
   if(isSal()){t.src=F.src||'';t.sitems=F.sitems.filter(x=>x.n).map(x=>({n:x.n,a:x.a}));learnSal(t);}
   if(isFood()){t.meal=F.meal||'';t.rest=F.rest||'';t.dish=dishSummary(F.items)||F.dish||'';t.items=F.items.filter(x=>x.n).map(x=>({...x}));learnEat(t);}
   try{for(const p of F.ph)if(p.n&&p.url)await idb.put(p.id,p.url);for(const id of F.delPh)await idb.del(id);}catch(e){alert('照片儲存失敗，這筆記錄仍會儲存');t.photos=[];}
@@ -1407,14 +1477,14 @@ async function saveForm(again){
 const PGACT={
   close(){if(F.mode!=='rec'&&(F.amt||F.note)&&!F.id&&!confirm('放棄這筆記錄？'))return;closeForm();},
   back(){F.page='main';F.q='';F.cedit=false;pageDraw();},
-  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';fixFood();fixSal();pageDraw();},
-  sal(){salSheet();},
-  amt(){if(isLock()){document.activeElement&&document.activeElement.blur();isFood()?dishSheet():salSheet();return;}F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
+  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';fixFood();fixSal();fixTrip();pageDraw();},
+  sal(){salSheet();},trip(){tripSheet();},
+  amt(){if(isLock()){document.activeElement&&document.activeElement.blur();isFood()?dishSheet():isSal()?salSheet():tripSheet();return;}F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
   fee(){F.kt='fee';F.kp=true;pageDraw();},
   done(){F[F.kt]=F[F.kt]?String(calc(F[F.kt])||''):'';F.kp=false;pageDraw();},
   meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},dish(){dishSheet();},
   cat(){F.page='cat';pageDraw();},acc(){F.page='acc';F.q='';pageDraw();},to(){F.page='to';F.q='';pageDraw();},member(){F.page='member';F.q='';pageDraw();},
-  pickcat(el){F.cat=el.dataset.id;F.page='main';fixFood();fixSal();pageDraw();},
+  pickcat(el){F.cat=el.dataset.id;F.page='main';fixFood();fixSal();fixTrip();pageDraw();},
   pick(el){const id=el.dataset.id;if(F.page==='acc')F.acc=id;else if(F.page==='to')F.to=id;else F.member=id;F.page='main';F.q='';pageDraw();},
   newcat(){F.nc={id:null,name:'',icon:'🍴',tab:'c'};F.page='newcat';pageDraw();},
   catedit(el){const c=S.cats[F.type].find(x=>x.id===el.dataset.id);if(!c)return;F.nc={id:c.id,name:c.name,icon:c.icon,tab:'c'};F.page='newcat';pageDraw();},
