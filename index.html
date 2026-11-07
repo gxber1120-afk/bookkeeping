@@ -250,6 +250,7 @@ header.ctr h1{text-align:center}
 #sheet .eatin{width:100%;box-sizing:border-box;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;caret-color:#4caf8f;outline:none;font-size:18px;padding:12px 2px;margin:4px 0 8px}#sheet .eatin::placeholder{color:var(--sub);-webkit-text-fill-color:var(--sub)}
 .ord{display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--dim)}.ord .on{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ord button:not(.rdel){width:30px;height:30px;border-radius:50%;border:1px solid var(--dim);background:none;color:var(--tx);font-size:18px;line-height:1}.ord b{min-width:20px;text-align:center}.ord .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.ord .pin2{width:62px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:4px 2px}.ord small{min-width:44px;text-align:right;color:var(--sub)}.tot{display:flex;justify-content:space-between;padding:10px 2px;font-size:17px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.chip .cx{margin-left:8px;color:#e5534b;font-weight:400}
+.frow{display:flex;align-items:center;gap:6px;font-size:17px}.frow span{white-space:nowrap}.frow .eatin{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -986,8 +987,7 @@ const isFood=()=>F&&F.mode!=='rec'&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)
 const dishList=()=>{const d=eatDB();if(F.rest){const r=d.rests.find(x=>x.name===F.rest);return r?r.dishes:[];}return d.gen;};
 function foodRows(){
   if(!isFood())return '';
-  return `<div class="pr meals"><span class="pi">🕘</span><span class="pl">餐別</span>${MEALS.map(m=>`<button class="mchip ${F.meal===m?'on':''}" data-p="meal" data-v="${m}">${m}</button>`).join('')}</div>
-  <div class="pr" data-p="dish"><span class="pi">🍱</span><span class="pl">餐點明細</span><span class="pv ${(F.rest||F.dish)?'':'ph'}">${(F.rest||F.dish)?esc([F.rest,F.dish].filter(Boolean).join('：')):'餐廳與餐點'}</span><span class="chv">›</span></div>`;
+  return `<div class="pr meals"><span class="pi">🕘</span><span class="pl">餐別</span>${MEALS.map(m=>`<button class="mchip ${F.meal===m?'on':''}" data-p="meal" data-v="${m}">${m}</button>`).join('')}</div>`;
 }
 function learnEat(t){
   const items=(t.items&&t.items.length)?t.items:(t.dish?[{n:t.dish,q:1,p:t.amt}]:[]);
@@ -1005,22 +1005,21 @@ function fixFood(){
 function dishSheet(){
   const d=eatDB();F.items=F.items||[];
   const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
-  const ordHtml=()=>F.items.length?F.items.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入餐點，輸入名稱或從下方選擇</div>';
-  const restHtml=q=>{const k=q.trim().toLowerCase();
-    const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n!==F.rest&&(!k||x.n.toLowerCase().includes(k)));
+  const ordHtml=()=>F.items.length?F.items.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入餐點</div>';
+  const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
+  const restHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
+    const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
     return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="prest" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
-  const savedHtml=q=>{const k=q.trim().toLowerCase(),L=dishList();
-    const its=L.map((x,i)=>({...x,i})).filter(x=>!k||x.n.toLowerCase().includes(k));
-    return (k&&!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
+  const savedHtml=q=>{const k=q.trim().toLowerCase(),L=dishList();if(!k)return '';
+    const its=L.map((x,i)=>({...x,i})).filter(x=>x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
+    return (!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
      +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
   sheet(`<h3>餐點明細</h3>
-    <div class="sech" style="margin:0 -2px">餐廳</div>
-    <input id="restin" class="eatin" placeholder="輸入餐廳名稱，點其他位置儲存" autocomplete="off" value="${esc(F.rest)}">
+    <div class="frow"><span>餐廳：</span><input id="restin" class="eatin" placeholder="輸入餐廳名稱" autocomplete="off" value="${esc(F.rest)}"></div>
     <div id="restl">${restHtml('')}</div>
-    <div class="sech" style="margin:8px -2px 0">餐點</div>
     <div id="ordl">${ordHtml()}</div>
     <div class="tot">總計 <b id="otot">${money(itemsTotal(F.items))}</b></div>
-    <input id="eatin" class="eatin" placeholder="輸入餐點名稱，點其他位置加入" autocomplete="off">
+    <div class="frow"><span>餐點：</span><input id="eatin" class="eatin" placeholder="輸入餐點名稱" autocomplete="off"></div>
     <div id="eatlist">${savedHtml('')}</div>
     <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空餐點</button>`,el=>{
     const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl'),rin=el.querySelector('#restin'),rl=el.querySelector('#restl');let down=null;
@@ -1096,7 +1095,7 @@ function pageDraw(){
   }else{
     const c=S.cats[F.type]?.find(x=>x.id===F.cat),bl=budgetLeft(),d=new Date(F.date+'T00:00:00');
     const row=(ic,label,val,p,sub)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv">${val}${sub?`<small>${sub}</small>`:''}</span><span class="chv">›</span></div>`;
-    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'由餐點明細自動計算':'輸入金額'))}</span></div>`;
+    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'點此填寫餐點明細':'輸入金額'))}</span></div>`;
     html=`<div class="pg-h"><button class="l x" data-p="close">✕</button><div class="seg3">${[['e','支出'],['i','收入'],['t','轉帳']].map(([k,n])=>`<button data-p="type" data-v="${k}" class="${F.type===k?'on':''}">${n}</button>`).join('')}</div><button class="r" data-p="save">儲存</button></div>
     <div class="pg-b"><label class="pg-date"><span>${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日週${W[d.getDay()]}</span><input type="date" data-pf="date" value="${F.date}"></label>
     ${amtRow('🪙','金額','v-amt','amt','amt')}
