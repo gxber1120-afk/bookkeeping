@@ -829,7 +829,10 @@ const AACT={
   });
   pg.addEventListener('input',e=>{const k=e.target.dataset.af;if(!k||!AP)return;
     if(k==='name')AP.e.name=e.target.value;else if(k==='note')AP.e.note=e.target.value;
-    else if(k==='dq'){AP.det.q=e.target.value;const pos=e.target.selectionStart;aDraw();const i=pg.querySelector('[data-af=dq]');if(i){i.focus();i.setSelectionRange(pos,pos);}}});
+    else if(k==='dq'){if(e.isComposing||pg._cmp)return;dqApply(e.target);}});
+  const dqApply=t=>{if(AP.det.q===t.value)return;AP.det.q=t.value;const pos=t.selectionStart;aDraw();const i=pg.querySelector('[data-af=dq]');if(i){i.focus();i.setSelectionRange(pos,pos);}};
+  pg.addEventListener('compositionstart',e=>{if(e.target.dataset.af==='dq')pg._cmp=true;});
+  pg.addEventListener('compositionend',e=>{if(e.target.dataset.af==='dq'){pg._cmp=false;if(AP)dqApply(e.target);}});
   pg.addEventListener('change',e=>{const k=e.target.dataset.af;if(!k||!AP)return;
     if(k==='noNet')AP.e.noNet=e.target.checked;else if(k==='auto')AP.e.auto=e.target.checked;else if(k==='off')AP.e.off=e.target.checked;});
   pg.addEventListener('focusin',e=>{if(AP&&AP.e&&e.target.dataset.af&&e.target.dataset.af!=='dq'){AP.e.kp=false;pg.classList.remove('kp-on');}});
@@ -1466,7 +1469,14 @@ function render(){
   if(BP)bDraw();
   if(AP)aDraw();
   if(RP)rDraw();
-  const q=$('#q');if(q)q.oninput=()=>{ui.q=q.value;const pos=q.selectionStart;render();const q2=$('#q');q2.focus();q2.setSelectionRange(pos,pos);};
+  const q=$('#q');if(q){
+    // 注音／拼音輸入法組字中不重繪，等選字確定（compositionend）才套用搜尋，避免輸入法亂跳
+    let comp=false;
+    const apply=()=>{if(ui.q===q.value)return;ui.q=q.value;const pos=q.selectionStart;render();const q2=$('#q');q2.focus();q2.setSelectionRange(pos,pos);};
+    q.addEventListener('compositionstart',()=>{comp=true;});
+    q.addEventListener('compositionend',()=>{comp=false;apply();});
+    q.addEventListener('input',e=>{if(comp||e.isComposing)return;apply();});
+  }
 }
 document.addEventListener('click',e=>{
   if($('#sheet').classList.contains('on')&&$('#sheet').contains(e.target))return;
