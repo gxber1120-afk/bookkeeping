@@ -252,6 +252,7 @@ header.ctr h1{text-align:center}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.chip .cx{margin-left:8px;color:#e5534b;font-weight:400}
 .frow{display:flex;align-items:center;gap:6px;font-size:17px}.frow span{white-space:nowrap}.frow .eatin{flex:1;min-width:0}
 .fcard{margin:12px 14px 12px;padding:12px 14px;border-radius:12px;background:var(--dim);font-size:15px}.fc-h,.fc-f{display:flex;justify-content:space-between;gap:10px}.fc-h b,.fc-f b{font-weight:600}.fc-t{margin:10px 0 4px;color:var(--sub);font-size:13px}.fc-r{display:flex;gap:8px;padding:3px 0}.fc-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc-q{color:var(--sub);min-width:28px}.fc-p{color:var(--sub);min-width:40px;text-align:right}.fc-s{min-width:50px;text-align:right}.fc-f{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.pr .pv:has(.ai){margin-left:auto;flex:none}
 </style>
 </head>
 <body>
@@ -652,7 +653,7 @@ function openAcct(id){AP={page:'sum',aid:id,grain:'y',period:'all',det:null,e:nu
 function openAcctEdit(id){
   const a=id?S.accounts.find(x=>x.id===id):null;
   AP={page:'edit',aid:id,grain:AP?AP.grain:'y',period:AP?AP.period:'all',det:null,
-    e:{id,type:a?a.type:'cash',name:a?a.name:'',init:a?String(a.init||0):'',noNet:!!(a&&a.noNet),icon:a&&a.icon||'',color:a&&a.color||'',note:a&&a.note||'',off:!!(a&&a.off),kp:false}};
+    e:{id,type:a?a.type:'cash',name:a?a.name:'',init:a?(a.type==='credit'?String(-(a.init||0)):String(a.init||0)):'',pay:a&&a.bill?a.bill.pay||'':'',close:a&&a.bill?a.bill.close||0:0,payDay:a&&a.bill?a.bill.payDay||0:0,payNext:a&&a.bill?a.bill.payNext!==false:true,adj:a&&a.bill?a.bill.adj||'none':'none',auto:!!(a&&a.bill&&a.bill.auto),noNet:!!(a&&a.noNet),icon:a&&a.icon||'',color:a&&a.color||'',note:a&&a.note||'',off:!!(a&&a.off),kp:false}};
   aDraw();
 }
 function matchT(t,q){
@@ -706,18 +707,38 @@ function aDet(a){
 }
 function aEdit(){
   const e=AP.e,tn={...ATYPE}[e.type];
-  const init=String(e.init||''),neg=/^[-−]/.test(init);
+  const init=String(e.init||''),neg=initNeg(e,init),cr=e.type==='credit';
+  const accN=id=>{const x=S.accounts.find(y=>y.id===id);return x?x.name:'未設定';};
+  const bill=cr?`<div style="height:14px"></div>
+  <div class="pr" data-a="gopick" data-f="pay"><span class="pl">繳款帳戶</span><span class="pv">${esc(accN(e.pay))}</span><span class="chv">›</span></div>
+  <div class="pr" data-a="gopick" data-f="close"><span class="pl">結帳日</span><span class="pv">${e.close?e.close+'日':'未設定'}</span><span class="chv">›</span></div>
+  <div class="pr" data-a="gopick" data-f="payDay"><span class="pl">繳款日</span><span class="pv">${e.payDay?(e.payNext?'下個月':'本月')+' /'+e.payDay+'日':'未設定'}</span><span class="chv">›</span></div>
+  <div class="pr" data-a="gopick" data-f="adj"><span class="pl">繳款日假日調整</span><span class="pv">${ADJ[e.adj]}</span><span class="chv">›</span></div>
+  <div class="pr"><span class="pl">自動繳款</span><label class="tg"><input type="checkbox" data-af="auto" ${e.auto?'checked':''}><i></i></label></div>`:'';
   return `<div class="pg-h"><button class="l" data-a="cancel">取消</button><h2>${e.id?'編輯帳戶':'新增帳戶'}</h2><button class="r" data-a="save">儲存</button></div>
   <div class="pg-b"><div class="pr" data-a="gotype"><span class="pl">帳戶類型</span><span class="pv">${esc(tn)}</span><span class="chv">›</span></div><div style="height:14px"></div>
   <div class="pr"><span class="pl">帳戶名稱</span><input class="pin" data-af="name" value="${esc(e.name)}" placeholder="例如：郵局"></div>
   <div class="pr"><span class="pl">幣別</span><span class="pv">新台幣</span></div>
-  <div class="pr" data-a="initf"><span class="pl">初始餘額</span><span class="pv ${neg?'e':'i'}" id="a-init">${init?fmtAmt(init):'0'}</span></div>
+  <div class="pr" data-a="initf"><span class="pl">${cr?'初始負債':'初始餘額'}</span><span class="pv ${neg?'e':'i'}" id="a-init">${init?fmtAmt(init):'0'}</span></div>
   <div class="pr"><span class="pl">不計入資產</span><label class="tg"><input type="checkbox" data-af="noNet" ${e.noNet?'checked':''}><i></i></label></div>
   <div class="pr" data-a="goicon"><span class="pl">圖示</span><span class="pv">${accIcon({type:e.type,icon:e.icon,color:e.color})}</span><span class="chv">›</span></div>
+  ${bill}
   <div style="height:14px"></div><textarea class="note" data-af="note" placeholder="備註">${esc(e.note)}</textarea><div style="height:14px"></div>
   <div class="pr"><span class="pl">使用停止</span><label class="tg"><input type="checkbox" data-af="off" ${e.off?'checked':''}><i></i></label></div>
   ${e.id?'<div class="delrow" data-a="del">刪除帳戶</div>':''}<div style="height:40px"></div></div>
   <div class="bkp"><div class="kbar"><span></span><button data-a="done">完成</button></div><div class="kp-g">${['÷','7','8','9','×','4','5','6','−','1','2','3','+','.','0','⌫'].map(k=>`<button class="${isOp(k)?'op':''}" data-ak="${k}">${k}</button>`).join('')}</div></div>`;
+}
+const initNeg=(e,s)=>e.type==='credit'?(String(s||'')!==''&&!/^[-−]/.test(s)&&String(s)!=='0'):/^[-−]/.test(s);
+function aPickPg(){
+  const e=AP.e,f=AP.pf,back='<button class="l" data-a="back">‹ 編輯帳戶</button>';
+  const row=(v,lbl,cur)=>`<div class="pr" data-a="pickBill" data-f="${f}" data-v="${v}"><span style="flex:1">${lbl}</span>${cur?'<span class="blue">✓</span>':''}</div>`;
+  const days=n=>Array.from({length:n},(_,i)=>i+1);
+  let title,body;
+  if(f==='pay'){title='繳款帳戶';body=row('','不指定',!e.pay)+S.accounts.filter(x=>x.id!==e.id&&x.type!=='credit'&&!x.off).map(x=>row(x.id,esc(x.name),e.pay===x.id)).join('');}
+  else if(f==='close'){title='結帳日';body=days(31).map(d=>row(d,d+'日',e.close===d)).join('');}
+  else if(f==='payDay'){title='繳款日';body=`<div class="seg5">${[[0,'本月'],[1,'下個月']].map(([k,n])=>`<button data-a="payNext" data-v="${k}" class="${(e.payNext?1:0)===k?'on':''}">${n}</button>`).join('')}</div>`+days(31).map(d=>row(d,d+'日',e.payDay===d)).join('');}
+  else{title='繳款日假日調整';body='<div class="sech">週末・假日調整</div>'+Object.entries(ADJ).map(([k,n])=>row(k,n,e.adj===k)).join('');}
+  return `<div class="pg-h w">${back}<h2>${title}</h2><span></span></div><div class="pg-b">${body}</div>`;
 }
 function aType(){
   return `<div class="pg-h w"><button class="l" data-a="back">‹ 編輯帳戶</button><h2>帳戶類型</h2><span></span></div><div class="pg-b">${Object.entries(ATYPE).map(([k,n])=>`<div class="pr" data-a="pickType" data-k="${k}">${accIcon({type:k})}<span style="flex:1">${esc(n)}</span>${AP.e.type===k?'<span class="blue">✓</span>':''}</div>`).join('')}</div>`;
@@ -734,7 +755,7 @@ function aDraw(){
   const a=S.accounts.find(x=>x.id===AP.aid);
   if((AP.page==='sum'||AP.page==='det')&&!a){AP=null;aDraw();return;}
   const old=el.querySelector('.pg-b'),sc=(old&&AP._d===AP.page)?old.scrollTop:0;AP._d=AP.page;
-  el.innerHTML=AP.page==='sum'?aSum(a):AP.page==='det'?aDet(a):AP.page==='edit'?aEdit():AP.page==='type'?aType():aIconPg();
+  el.innerHTML=AP.page==='sum'?aSum(a):AP.page==='det'?aDet(a):AP.page==='edit'?aEdit():AP.page==='type'?aType():AP.page==='pick'?aPickPg():aIconPg();
   el.classList.add('on');el.classList.toggle('kp-on',!!(AP.e&&AP.e.kp&&AP.page==='edit'));
   const b=el.querySelector('.pg-b');if(b)b.scrollTop=sc;
 }
@@ -748,11 +769,15 @@ function aPickPeriod(){
 }
 function saveAcct(){
   const e=AP.e,name=e.name.trim();if(!name)return alert('請輸入帳戶名稱');
-  const s=String(e.init||''),initv=s?calc(/^[-−]/.test(s)?'0'+s:s):0;
+  const s=String(e.init||''),iv=s?calc(/^[-−]/.test(s)?'0'+s:s):0,initv=e.type==='credit'?-iv:iv;
   const o={id:e.id||uid(),name,type:e.type,init:initv};
+  if(e.type==='credit'&&(e.pay||e.close||e.payDay||e.auto)){
+    const old=e.id?(S.accounts.find(x=>x.id===e.id)||{}).bill:null;
+    o.bill={pay:e.pay,close:e.close,payDay:e.payDay,payNext:e.payNext,adj:e.adj,auto:!!e.auto,since:(old&&old.auto&&e.auto&&old.since)||today(),done:(old&&old.done)||''};
+  }
   if(e.noNet)o.noNet=true;if(e.icon)o.icon=e.icon;if(e.color)o.color=e.color;if(e.note.trim())o.note=e.note.trim();if(e.off)o.off=true;
   if(e.id)S.accounts[S.accounts.findIndex(x=>x.id===e.id)]=o;else S.accounts.push(o);
-  save();
+  runRecurring();save();
   if(e.id){AP.page='sum';AP.e=null;}else AP=null;
   aDraw();render();
 }
@@ -780,7 +805,12 @@ const AACT={
     if(confirm('確定刪除此帳戶？')){S.accounts=S.accounts.filter(x=>x.id!==id);save();AP=null;aDraw();render();}},
   gotype(){AP.page='type';document.activeElement&&document.activeElement.blur();aDraw();},
   goicon(){AP.page='icon';aDraw();},
-  pickType(el){AP.e.type=el.dataset.k;AP.page='edit';aDraw();},
+  pickType(el){const e=AP.e,nt=el.dataset.k;
+    if((nt==='credit')!==(e.type==='credit')){const s=String(e.init||'');e.init=s&&s!=='0'?(/^[-−]/.test(s)?s.slice(1):'-'+s):s;}
+    e.type=nt;AP.page='edit';aDraw();},
+  gopick(el){AP.pf=el.dataset.f;AP.page='pick';document.activeElement&&document.activeElement.blur();aDraw();},
+  payNext(el){AP.e.payNext=el.dataset.v==='1';aDraw();},
+  pickBill(el){const f=el.dataset.f,v=el.dataset.v;AP.e[f]=(f==='close'||f==='payDay')?+v:v;AP.page='edit';aDraw();},
   pickIcon(el){AP.e.icon=el.dataset.v;aDraw();},
   pickColor(el){AP.e.color=el.dataset.v;aDraw();},
   resetIcon(){AP.e.icon='';AP.e.color='';aDraw();},
@@ -794,14 +824,14 @@ const AACT={
     const k=e.target.closest('[data-ak]');
     if(k&&AP.e){let s=String(AP.e.init||''),key=k.dataset.ak;
       if((key==='−'||key==='-')&&(s===''||s==='0'))s='-';else s=kapply(s,key);
-      AP.e.init=s;const t=document.getElementById('a-init');if(t){t.textContent=s?fmtAmt(s):'0';t.className='pv '+(/^[-−]/.test(s)?'e':'i');}return;}
+      AP.e.init=s;const t=document.getElementById('a-init');if(t){t.textContent=s?fmtAmt(s):'0';t.className='pv '+(initNeg(AP.e,s)?'e':'i');}return;}
     const b=e.target.closest('[data-a]');if(b&&AACT[b.dataset.a])AACT[b.dataset.a](b);
   });
   pg.addEventListener('input',e=>{const k=e.target.dataset.af;if(!k||!AP)return;
     if(k==='name')AP.e.name=e.target.value;else if(k==='note')AP.e.note=e.target.value;
     else if(k==='dq'){AP.det.q=e.target.value;const pos=e.target.selectionStart;aDraw();const i=pg.querySelector('[data-af=dq]');if(i){i.focus();i.setSelectionRange(pos,pos);}}});
   pg.addEventListener('change',e=>{const k=e.target.dataset.af;if(!k||!AP)return;
-    if(k==='noNet')AP.e.noNet=e.target.checked;else if(k==='off')AP.e.off=e.target.checked;});
+    if(k==='noNet')AP.e.noNet=e.target.checked;else if(k==='auto')AP.e.auto=e.target.checked;else if(k==='off')AP.e.off=e.target.checked;});
   pg.addEventListener('focusin',e=>{if(AP&&AP.e&&e.target.dataset.af&&e.target.dataset.af!=='dq'){AP.e.kp=false;pg.classList.remove('kp-on');}});
 })();
 
@@ -843,7 +873,31 @@ function runRecurring(){
       r.n++;ch=true;
     }
   });
+  if(runCards())ch=true;
   if(ch)save();
+}
+function runCards(){
+  let ch=false;const td=today();
+  S.accounts.forEach(a=>{
+    const b=a.bill;if(!b||!b.auto||a.type!=='credit'||!b.pay||!b.close||!b.payDay||!S.accounts.some(x=>x.id===b.pay))return;
+    const clamp=(y,m,d)=>{const last=new Date(y,m+1,0).getDate();return ymd(new Date(y,m,Math.min(d,last)));};
+    const since=b.since||td,sd=new Date(since+'T00:00:00');
+    for(let i=-1;i<=2;i++){
+      const base=new Date(sd.getFullYear(),sd.getMonth()+i,1),y=base.getFullYear(),m=base.getMonth();
+      const close=clamp(y,m,b.close);if(close<since||close>td)continue;if(b.done&&close<=b.done)continue;
+      const pm=new Date(y,m+(b.payNext?1:0),1);let pd=clamp(pm.getFullYear(),pm.getMonth(),b.payDay);
+      if(pd<=close)pd=mAdd(pd,1);
+      pd=recAdj({adj:b.adj},pd);if(pd>td)continue;
+      const prev=clamp(y,m-1,b.close);
+      let amt=0;
+      S.tx.forEach(t=>{if(t.cardAuto||t.date<=prev||t.date>close)return;
+        if(t.acc===a.id){if(t.type==='e')amt+=t.amt;else if(t.type==='i')amt-=t.amt;else if(t.type==='t')amt+=t.amt+(t.fee||0);}});
+      amt=Math.round(amt*100)/100;
+      if(amt>0)S.tx.push({id:uid(),ts:Date.now()+i,book:S.cur,type:'t',amt,cat:'',acc:b.pay,to:a.id,fee:0,date:pd,note:'信用卡自動繳款',member:'',tags:[],auto:1,cardAuto:1});
+      b.done=close;ch=true;
+    }
+  });
+  return ch;
 }
 function openRec(r,mode){
   const t=r?r.type:(mode==='t'?'t':'e');
