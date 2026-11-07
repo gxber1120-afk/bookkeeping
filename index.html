@@ -247,6 +247,7 @@ label>input,label>select{flex:1;max-width:62%;text-align:right;border:0;backgrou
 header.ctr h1{text-align:center}
 .mrow small{font-size:16px}
 .meals .mchip{margin-left:6px;padding:5px 12px;border-radius:16px;border:1px solid var(--dim);background:none;color:var(--tx);font-size:15px}.meals .mchip.on{background:#4caf8f;border-color:#4caf8f;color:#000}.meals .pl{flex:1}
+#sheet .eatin{width:100%;box-sizing:border-box;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;caret-color:#4caf8f;outline:none;font-size:18px;padding:12px 2px;margin:4px 0 8px}#sheet .eatin::placeholder{color:var(--sub)}
 </style>
 </head>
 <body>
@@ -987,31 +988,43 @@ function foodRows(){
   <div class="pr" data-p="dish"><span class="pi">🍱</span><span class="pl">餐點</span><span class="pv ${F.dish?'':'ph'}">${F.dish?esc(F.dish):'選擇或新增'}</span><span class="chv">›</span></div>`;
 }
 function eatSheet(kind){
-  const draw=()=>{
-    const d=eatDB(),items=kind==='rest'?d.rests.map(r=>({n:r.name,s:r.dishes.length?r.dishes.length+' 道餐點':''})):dishList().map(x=>({n:x.n,s:x.p?money(x.p):''}));
-    const cur=kind==='rest'?F.rest:F.dish;
-    sheet(`<h3>${kind==='rest'?'餐廳':'餐點'+(F.rest?'・'+esc(F.rest):'')}</h3>
-    <div class="li"><input id="eatin" placeholder="${kind==='rest'?'新增餐廳名稱':'新增餐點名稱'}" style="flex:1"><button class="chip add" data-k="add">新增</button></div>
-    ${items.map((x,i)=>`<div class="li"><span data-k="pick" data-i="${i}" style="flex:1;padding:6px 0">${esc(x.n)}${cur===x.n?' ✓':''}</span><small>${esc(x.s)}</small><button class="rdel" data-k="del" data-i="${i}">✕</button></div>`).join('')}
-    <button class="btn ghost" data-k="none">不選擇</button><button class="btn ghost" data-k="x">關閉</button>`,el=>{
-      el.onclick=ev=>{const k=ev.target.dataset.k,i=+ev.target.dataset.i;if(!k)return;
-        if(k==='x')closeSheet();
-        else if(k==='none'){if(kind==='rest'){F.rest='';F.dish='';}else F.dish='';closeSheet();pageDraw();}
-        else if(k==='add'){const v=el.querySelector('#eatin').value.trim();if(!v)return;
-          if(kind==='rest'){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v)F.dish='';F.rest=v;}
-          else{const L=dishList();if(!L.some(x=>x.n===v))L.push({n:v,p:0});F.dish=v;}
-          save();closeSheet();pageDraw();}
-        else if(k==='pick'){
-          if(kind==='rest'){const n=items[i].n;if(F.rest!==n)F.dish='';F.rest=n;}
-          else{const x=dishList()[i];F.dish=x.n;if(!F.amt&&x.p)F.amt=String(x.p);}
-          closeSheet();pageDraw();}
-        else if(k==='del'){if(!confirm('從清單刪除「'+items[i].n+'」？（已記的帳不受影響）'))return;
-          if(kind==='rest'){const n=items[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';}}
-          else{const L=dishList();if(F.dish===L[i].n)F.dish='';L.splice(i,1);}
-          save();draw();pageDraw();}
-      };});
+  const d=eatDB(),isR=kind==='rest';
+  const all=()=>isR?d.rests.map(r=>({n:r.name,s:r.dishes.length?r.dishes.length+' 道餐點':''})):dishList().map(x=>({n:x.n,s:x.p?money(x.p):''}));
+  const cur=()=>isR?F.rest:F.dish;
+  const listHtml=q=>{
+    const k=q.trim().toLowerCase(),its=all().map((x,i)=>({...x,i})).filter(x=>!k||x.n.toLowerCase().includes(k));
+    const exact=all().some(x=>x.n.toLowerCase()===k);
+    return (k&&!exact?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可儲存</span></div>`:'')
+      +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}${cur()===x.n?' ✓':''}</span><small>${esc(x.s)}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');
   };
-  draw();
+  const commit=v=>{v=v.trim();if(!v)return;
+    if(isR){if(!d.rests.some(r=>r.name===v))d.rests.push({id:uid(),name:v,dishes:[]});if(F.rest!==v)F.dish='';F.rest=v;}
+    else{const L=dishList();if(!L.some(x=>x.n===v))L.push({n:v,p:0});F.dish=v;}
+    save();pageDraw();};
+  sheet(`<h3>${isR?'餐廳':'餐點'+(F.rest?'・'+esc(F.rest):'')}</h3>
+    <input id="eatin" class="eatin" placeholder="${isR?'輸入餐廳名稱':'輸入餐點名稱'}" autocomplete="off">
+    <div id="eatlist">${listHtml('')}</div>
+    <button class="btn ghost" data-k="none">不選擇</button><button class="btn ghost" data-k="x">關閉</button>`,el=>{
+    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist');let down=null,done=false;
+    el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
+    inp.addEventListener('input',()=>{lst.innerHTML=listHtml(inp.value);});
+    inp.addEventListener('blur',()=>{setTimeout(()=>{
+      const k=down&&down.dataset.k;if(done||k==='pick'||k==='del'||k==='none')return;
+      if(inp.value.trim()){commit(inp.value);inp.value='';lst.innerHTML=listHtml('');}
+    },0);});
+    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
+      if(k==='x'){closeSheet();}
+      else if(k==='none'){done=true;if(isR){F.rest='';F.dish='';}else F.dish='';closeSheet();pageDraw();}
+      else if(k==='pick'){done=true;
+        if(isR){const n=all()[i].n;if(F.rest!==n)F.dish='';F.rest=n;}
+        else{const x=dishList()[i];F.dish=x.n;if(!F.amt&&x.p)F.amt=String(x.p);}
+        closeSheet();pageDraw();}
+      else if(k==='del'){if(!confirm('從清單刪除「'+all()[i].n+'」？（已記的帳不受影響）'))return;
+        if(isR){const n=all()[i].n;d.rests.splice(i,1);if(F.rest===n){F.rest='';F.dish='';}}
+        else{const L=dishList();if(F.dish===L[i].n)F.dish='';L.splice(i,1);}
+        save();lst.innerHTML=listHtml(inp.value);pageDraw();}
+    };
+  });
 }
 function learnEat(t){
   if(!t.rest&&!t.dish)return;const d=eatDB();let r=null;
