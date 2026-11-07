@@ -1009,6 +1009,7 @@ function foodCard(){
 const salDB=()=>(S.sal=S.sal||{srcs:[],gen:[]});
 const isSal=()=>F&&F.mode!=='rec'&&F.type==='i'&&S.cats.i.find(x=>x.id===F.cat)?.name==='薪資';
 const isLock=()=>isFood()||isSal();
+const DEDUCT=/勞保|健保|福利金/;
 const salTotal=a=>(a||[]).reduce((s,x)=>s+(+x.a||0),0);
 const salList=()=>{const d=salDB();if(F.src){const r=d.srcs.find(x=>x.name===F.src);return r?r.items:[];}return d.gen;};
 function learnSal(t){
@@ -1032,7 +1033,7 @@ function salSheet(){
   const d=salDB();F.sitems=F.sitems||[];
   const sync=()=>{const t=salTotal(F.sitems);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
   const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
-  const ordHtml=()=>F.sitems.length?F.sitems.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="sgn" data-i="${i}">${x.a<0?'−':'＋'}</button><input class="pin2" data-k="amt" data-i="${i}" inputmode="decimal" placeholder="金額" value="${x.a?Math.abs(x.a):''}"><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入收入項目</div>';
+  const ordHtml=()=>F.sitems.length?F.sitems.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="sgn" data-i="${i}">${(x._neg===undefined?x.a<0:x._neg)?'−':'＋'}</button><input class="pin2" data-k="amt" data-i="${i}" inputmode="decimal" placeholder="金額" value="${x.a?Math.abs(x.a):''}"><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入收入項目</div>';
   const srcHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
     const its=d.srcs.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
     return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="psrc" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
@@ -1049,7 +1050,7 @@ function salSheet(){
     <div id="itl"></div>
     <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空項目</button>`,el=>{
     const sin=el.querySelector('#srcin'),sl=el.querySelector('#srcl'),inp=el.querySelector('#itin'),il=el.querySelector('#itl'),ol=el.querySelector('#ordl');let down=null;
-    const addItem=(n,a)=>{if(!F.sitems.some(x=>x.n===n))F.sitems.push({n,a:a||0});};
+    const addItem=(n,a)=>{if(F.sitems.some(x=>x.n===n))return;const neg=DEDUCT.test(n)||(a||0)<0;F.sitems.push({n,a:neg?-Math.abs(a||0):(a||0),_neg:neg});};
     const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(salTotal(F.sitems));il.innerHTML=savedHtml(inp.value);sl.innerHTML=srcHtml(sin.value);sync();};
     const commitSrc=()=>{const v=sin.value.trim();if(v===F.src)return;if(v&&!d.srcs.some(r=>r.name===v)){d.srcs.push({id:uid(),name:v,items:[]});save();}F.src=v;redraw();};
     const commitItem=()=>{const v=inp.value.trim();if(!v)return;const L=salList(),s=L.find(x=>x.n===v);if(!s){L.push({n:v,a:0});save();}addItem(v,s?s.a:0);inp.value='';redraw();};
