@@ -266,6 +266,7 @@ header.ctr h1{text-align:center}
 .smi{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;font-size:18px;border-bottom:1px solid #3a3a3d;color:#fff}.smi:last-child{border:0}.smic{color:#bbb}
 .paydt{position:relative}.paydt input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
 .leg{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--dim)}.leg .la{color:var(--sub)}.leg .lin{flex:1;min-width:0;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;outline:none;font-size:16px;padding:6px 2px}.leg .lin::placeholder,.leg .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.leg .pin2{width:64px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:6px 2px}
+#menul .ord{padding:8px 6px}.ord.sel{background:rgba(76,175,143,.12)}.ord .pin2{width:56px}
 </style>
 </head>
 <body>
@@ -1402,48 +1403,60 @@ function fixFood(){
 function dishSheet(){
   const d=eatDB();F.items=F.items||[];
   const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
-  const ordHtml=()=>F.items.length?F.items.map((x,i)=>`<div class="ord"><span class="on">${esc(x.n)}</span><button data-k="dec" data-i="${i}">−</button><b>${x.q}</b><button data-k="inc" data-i="${i}">＋</button><input class="pin2" data-k="price" data-i="${i}" inputmode="decimal" placeholder="單價" value="${x.p||''}"><small id="sb${i}">${money(x.q*x.p)}</small><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入餐點</div>';
   const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
+  // 菜單列：這間餐廳登記過的菜單 + 這筆已選但不在菜單內的餐點
+  const rowsOf=q=>{const k=q.trim().toLowerCase(),L=dishList();
+    const rows=L.map((m,i)=>({n:m.n,p:m.p||0,mi:i}));
+    F.items.forEach(o=>{if(!L.some(m=>m.n===o.n))rows.push({n:o.n,p:o.p||0,mi:-1});});
+    return rows.filter(r=>!k||r.n.toLowerCase().includes(k)).sort((a,b)=>k?rank(a.n,k)-rank(b.n,k):0);};
+  const menuHtml=q=>{const rows=rowsOf(q);
+    if(!rows.length)return `<div class="li" style="color:var(--sub)">${q.trim()?'菜單裡沒有這項，可在下方新增':(F.rest?'這間餐廳還沒有菜單，請在下方新增餐點':'尚無菜單，請先輸入餐廳或新增餐點')}</div>`;
+    return rows.map(r=>{const o=F.items.find(x=>x.n===r.n),qn=o?o.q:0,key=encodeURIComponent(r.n);
+      return `<div class="ord ${qn?'sel':''}"><span class="on">${esc(r.n)}</span><input class="pin2" data-k="mp" data-n="${key}" inputmode="decimal" placeholder="價錢" value="${r.p||''}"><button data-k="mdec" data-n="${key}">−</button><b>${qn}</b><button data-k="minc" data-n="${key}">＋</button>${r.mi>=0?`<button class="rdel" data-k="mdel" data-n="${key}">✕</button>`:'<span style="width:22px"></span>'}</div>`;}).join('');};
   const restHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
     const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
     return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="prest" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
-  const savedHtml=q=>{const k=q.trim().toLowerCase(),L=dishList();if(!k)return '';
-    const its=L.map((x,i)=>({...x,i})).filter(x=>x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
-    return (!L.some(x=>x.n.toLowerCase()===k)?`<div class="li" style="color:var(--sub)"><span style="flex:1">新增「${esc(q.trim())}」：點其他位置即可加入</span></div>`:'')
-     +its.map(x=>`<div class="li"><span data-k="pick" data-i="${x.i}" style="flex:1;padding:8px 0">${esc(x.n)}</span><small>${x.p?money(x.p):''}</small><button class="rdel" data-k="del" data-i="${x.i}">✕</button></div>`).join('');};
   sheet(`<h3>餐點明細</h3>
     <div class="frow"><span>餐廳：</span><input id="restin" class="eatin" placeholder="輸入餐廳名稱" autocomplete="off" value="${esc(F.rest)}"></div>
     <div id="restl">${restHtml('')}</div>
-    <div id="ordl">${ordHtml()}</div>
+    <div class="fc-t" style="margin:10px 0 2px">菜單（點 ＋ 選擇數量，價錢可直接修改）</div>
+    <div id="menul">${menuHtml('')}</div>
     <div class="tot">總計 <b id="otot">${money(itemsTotal(F.items))}</b></div>
+    <div class="fc-t" style="margin:6px 0 0">新增菜單項目</div>
     <div class="frow"><span>餐點：</span><input id="eatin" class="eatin" placeholder="輸入餐點名稱" autocomplete="off"></div>
-    <div id="eatlist">${savedHtml('')}</div>
-    <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空餐點</button>`,el=>{
-    const inp=el.querySelector('#eatin'),lst=el.querySelector('#eatlist'),ol=el.querySelector('#ordl'),rin=el.querySelector('#restin'),rl=el.querySelector('#restl');let down=null;
-    const addItem=(n,p)=>{const f=F.items.find(x=>x.n===n);if(f)f.q++;else F.items.push({n,q:1,p:p||0});};
-    const redraw=()=>{ol.innerHTML=ordHtml();el.querySelector('#otot').textContent=money(itemsTotal(F.items));lst.innerHTML=savedHtml(inp.value);rl.innerHTML=restHtml(rin.value);sync();};
+    <div class="frow"><span>價錢：</span><input id="newp" class="eatin" inputmode="decimal" placeholder="輸入價錢" autocomplete="off"></div>
+    <button class="btn ghost" data-k="addm">＋ 加入菜單並選取</button>
+    <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空已選</button>`,el=>{
+    const inp=el.querySelector('#eatin'),np=el.querySelector('#newp'),ml=el.querySelector('#menul'),rin=el.querySelector('#restin'),rl=el.querySelector('#restl');let down=null;
+    const total=()=>{el.querySelector('#otot').textContent=money(itemsTotal(F.items));};
+    const redraw=()=>{ml.innerHTML=menuHtml(inp.value);total();rl.innerHTML=restHtml(rin.value);sync();};
+    const nm=t=>decodeURIComponent(t.dataset.n);
     const commitRest=()=>{const v=rin.value.trim();if(v===F.rest)return;
       if(v&&!d.rests.some(r=>r.name===v)){d.rests.push({id:uid(),name:v,dishes:[]});save();}
       F.rest=v;redraw();};
-    const commitTyped=()=>{const v=inp.value.trim();if(!v)return;const L=dishList(),s=L.find(x=>x.n===v);if(!s){L.push({n:v,p:0});save();}addItem(v,s?s.p:0);inp.value='';redraw();};
+    const commitNew=()=>{const v=inp.value.trim();if(!v)return false;const p=parseFloat(np.value)||0,L=dishList();let m=L.find(x=>x.n===v);
+      if(!m){m={n:v,p};L.push(m);}else if(p)m.p=p;
+      save();const o=F.items.find(x=>x.n===v);if(o){o.q++;if(p)o.p=p;}else F.items.push({n:v,q:1,p:m.p||0});
+      inp.value='';np.value='';redraw();return true;};
     el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
-    inp.addEventListener('input',()=>{lst.innerHTML=savedHtml(inp.value);});
+    inp.addEventListener('input',()=>{ml.innerHTML=menuHtml(inp.value);});
     rin.addEventListener('input',()=>{rl.innerHTML=restHtml(rin.value);});
     const skip=()=>{const k=down&&down.dataset.k;return k&&!['x','ok','clr'].includes(k);};
-    inp.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitTyped();},0);});
+    const nb=()=>setTimeout(()=>{if(document.activeElement===inp||document.activeElement===np||skip())return;commitNew();},0);
+    inp.addEventListener('blur',nb);np.addEventListener('blur',nb);
     rin.addEventListener('blur',()=>{setTimeout(()=>{if(!skip())commitRest();},0);});
-    el.addEventListener('input',e=>{const t=e.target;if(t.dataset.k!=='price')return;const i=+t.dataset.i;F.items[i].p=parseFloat(t.value)||0;
-      el.querySelector('#sb'+i).textContent=money(F.items[i].q*F.items[i].p);el.querySelector('#otot').textContent=money(itemsTotal(F.items));sync();});
+    el.addEventListener('input',e=>{const t=e.target;if(t.dataset.k!=='mp')return;const n=nm(t),p=parseFloat(t.value)||0;
+      const m=dishList().find(x=>x.n===n);if(m){m.p=p;save();}
+      const o=F.items.find(x=>x.n===n);if(o)o.p=p;total();sync();});
     el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
-      if(k==='ok'){commitRest();commitTyped();closeSheet();pageDraw();}
+      if(k==='ok'){commitRest();commitNew();closeSheet();pageDraw();}
+      else if(k==='addm'){commitNew();}
       else if(k==='clr'){F.items=[];redraw();}
-      else if(k==='inc'){F.items[i].q++;redraw();}
-      else if(k==='dec'){if(F.items[i].q>1)F.items[i].q--;else F.items.splice(i,1);redraw();}
-      else if(k==='rm'){F.items.splice(i,1);redraw();}
+      else if(k==='minc'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o)o.q++;else{const m=dishList().find(x=>x.n===n);F.items.push({n,q:1,p:m?m.p||0:0});}redraw();}
+      else if(k==='mdec'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o){if(o.q>1)o.q--;else F.items=F.items.filter(x=>x!==o);}redraw();}
+      else if(k==='mdel'){const n=nm(t);if(!confirm('從菜單刪除「'+n+'」？（已記的帳不受影響）'))return;const L=dishList(),j=L.findIndex(x=>x.n===n);if(j>=0)L.splice(j,1);F.items=F.items.filter(x=>x.n!==n);save();redraw();}
       else if(k==='prest'){F.rest=d.rests[i].name;rin.value=F.rest;redraw();}
       else if(k==='delr'){ev.stopPropagation();const n=d.rests[i].name;if(!confirm('從清單刪除餐廳「'+n+'」？（已記的帳不受影響）'))return;d.rests.splice(i,1);if(F.rest===n){F.rest='';rin.value='';}save();redraw();}
-      else if(k==='pick'){const x=dishList()[i];addItem(x.n,x.p);inp.value='';redraw();}
-      else if(k==='del'){const L=dishList();if(!confirm('從常用清單刪除「'+L[i].n+'」？（已記的帳不受影響）'))return;L.splice(i,1);save();lst.innerHTML=savedHtml(inp.value);}
     };
   });
 }
