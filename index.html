@@ -265,6 +265,7 @@ header.ctr h1{text-align:center}
 #smenu{position:fixed;top:calc(56px + env(safe-area-inset-top,0px));right:12px;width:230px;background:#2b2b2e;border-radius:14px;z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.5);overflow:hidden}
 .smi{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;font-size:18px;border-bottom:1px solid #3a3a3d;color:#fff}.smi:last-child{border:0}.smic{color:#bbb}
 .paydt{position:relative}.paydt input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.leg{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--dim)}.leg .la{color:var(--sub)}.leg .lin{flex:1;min-width:0;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;outline:none;font-size:16px;padding:6px 2px}.leg .lin::placeholder,.leg .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.leg .pin2{width:64px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:6px 2px}
 </style>
 </head>
 <body>
@@ -357,7 +358,7 @@ function closeSheet(){const s=$('#sheet');s.classList.remove('on');s.innerHTML='
 function row(t,wd){
   const c=t.type==='t'?{icon:'🔁',name:'轉帳'}:(S.cats[t.type].find(x=>x.id===t.cat)||{icon:'❓',name:'未分類'});
   const who=t.type==='t'?accName(t.acc)+' → '+accName(t.to):(t.member||'自己');
-  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.place,t.tsum,t.note].filter(Boolean).join(' | ');
+  const sub=[wd?dLbl(t.date):'',who,t.meal,t.rest,t.dish,t.src,t.place,t.tsum,t.vehicle,t.lsum,t.note].filter(Boolean).join(' | ');
   const pills=(t.tags||[]).length?`<div class="pills">${t.tags.map(x=>`<span class="tgp">${esc(x)}</span>`).join('')}</div>`:'';
   const right=t.type==='t'?(t.fee?'手續費 '+t.fee:''):accName(t.acc);
   return `<div class="row" data-act="edit" data-id="${t.id}"><span class="ic">${c.icon}</span><div class="mid"><b>${esc(c.name)}${t.photos&&t.photos.length?' 🧾':''}</b><small>${esc(sub)}</small>${pills}</div><div class="rt"><span class="amt ${t.type}">${money(t.amt)}</span><small>${esc(right)}</small></div><span class="mo">⋮</span></div>`;
@@ -381,7 +382,7 @@ function sMatch(t){
   const q=SP.q.trim().toLowerCase();
   if(q){
     const c=t.type==='t'?'轉帳':(S.cats[t.type].find(x=>x.id===t.cat)?.name||'');
-    const hay=[t.note,c,t.member,accName(t.acc),t.to?accName(t.to):'',tg.join(' '),String(t.amt),t.meal,t.rest,t.dish,t.src,t.place,(t.titems||[]).map(x=>x.n).join(' '),(t.items||[]).map(x=>x.n).join(' '),(t.sitems||[]).map(x=>x.n).join(' ')].join(' ').toLowerCase();
+    const hay=[t.note,c,t.member,accName(t.acc),t.to?accName(t.to):'',tg.join(' '),String(t.amt),t.meal,t.rest,t.dish,t.src,t.place,t.vehicle,(t.legs||[]).map(x=>x.f+' '+x.t).join(' '),(t.titems||[]).map(x=>x.n).join(' '),(t.items||[]).map(x=>x.n).join(' '),(t.sitems||[]).map(x=>x.n).join(' ')].join(' ').toLowerCase();
     if(!q.split(/\s+/).every(w=>hay.includes(w)))return false;
   }
   return true;
@@ -1147,9 +1148,9 @@ function updVals(){
 }
 function openForm(init){
   const editing=!!(init&&init.id);
-  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],src:'',sitems:[],place:'',titems:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
+  F=Object.assign({type:'e',amt:'',cat:'',acc:(S.accounts.find(a=>!a.off)||S.accounts[0])?.id,to:'',fee:'',date:(ui.tab==='home'&&ui.view==='cal')?ui.sel:today(),note:'',member:'',tags:[],meal:'',rest:'',dish:'',items:[],src:'',sitems:[],place:'',titems:[],vehicle:'',legs:[],rep:'',ph:[],delPh:[],page:'main',kp:!editing,kt:'amt',q:''},init||{});
   F.tags=[...(F.tags||[])];
-  F.items=(F.items||[]).map(x=>({...x}));F.sitems=(F.sitems||[]).map(x=>({n:x.n,a:x.a}));F.titems=(F.titems||[]).map(x=>({...x}));F.payAuto=!F.pay;if(!F.pay)F.pay=F.date;fixFood();fixSal();fixTrip();
+  F.items=(F.items||[]).map(x=>({...x}));F.sitems=(F.sitems||[]).map(x=>({n:x.n,a:x.a}));F.titems=(F.titems||[]).map(x=>({...x}));F.legs=(F.legs||[]).map(x=>({...x}));F.payAuto=!F.pay;if(!F.pay)F.pay=F.date;fixFood();fixSal();fixTrip();
   F.ph=(init&&init.photos||[]).map(id=>({id,url:null}));
   delete F.photos;
   const me=F;
@@ -1189,7 +1190,7 @@ function foodCard(){
 /* ---------- 收入：薪資明細 ---------- */
 const salDB=()=>(S.sal=S.sal||{srcs:[],gen:[]});
 const isSal=()=>F&&F.mode!=='rec'&&F.type==='i'&&S.cats.i.find(x=>x.id===F.cat)?.name==='薪資';
-const isLock=()=>isFood()||isSal()||isTrip();
+const isLock=()=>isFood()||isSal()||isTrip()||isTransit();
 const DEDUCT=/勞保|健保|福利金/;
 const salTotal=a=>(a||[]).reduce((s,x)=>s+(+x.a||0),0);
 const salList=()=>{const d=salDB();if(F.src){const r=d.srcs.find(x=>x.name===F.src);return r?r.items:[];}return d.gen;};
@@ -1325,6 +1326,74 @@ function tripSheet(){
     };
   });
 }
+/* ---------- 交通：交通明細 ---------- */
+const trDB=()=>(S.transit=S.transit||{vehicles:[],gen:[]});
+const isTransit=()=>F&&F.mode!=='rec'&&F.type==='e'&&S.cats.e.find(x=>x.id===F.cat)?.name==='交通';
+const legTotal=a=>(a||[]).reduce((s,x)=>s+(+x.p||0),0);
+const legName=x=>(x.f||x.t)?(x.f||'?')+' → '+(x.t||'?'):(x.n||'交通費');
+const legSummary=a=>(a||[]).map(x=>(x.f||x.t)?(x.f||'?')+'→'+(x.t||'?'):(x.n||'交通費')).join('、');
+const trRoutes=()=>{const d=trDB();if(F.vehicle){const r=d.vehicles.find(x=>x.name===F.vehicle);return r?r.routes:[];}return d.gen;};
+function learnTransit(t){
+  const legs=(t.legs||[]).filter(x=>x.f||x.t);if(!t.vehicle&&!legs.length)return;const d=trDB();let r=null;
+  if(t.vehicle){r=d.vehicles.find(x=>x.name===t.vehicle);if(!r){r={id:uid(),name:t.vehicle,routes:[]};d.vehicles.push(r);}}
+  legs.forEach(l=>{const L=r?r.routes:d.gen;let x=L.find(y=>y.f===l.f&&y.t===l.t);if(!x){x={f:l.f,t:l.t,p:0};L.push(x);}if(l.p>0)x.p=l.p;});
+}
+function fixTransit(){
+  if(!isTransit())return;F.legs=F.legs||[];
+  if(!F.legs.length&&calc(F.amt)>0)F.legs=[{f:'',t:'',p:calc(F.amt),n:'交通費'}];
+  const t=legTotal(F.legs);F.amt=t>0?String(Math.round(t*100)/100):'';
+}
+function transitCard(){
+  if(!isTransit()||(!F.vehicle&&!(F.legs||[]).length))return '';
+  const it=(F.legs||[]).map(x=>`<div class="fc-r"><span class="fc-n">${esc(legName(x))}</span><span class="fc-s">${money(x.p||0)}</span></div>`).join('');
+  return `<div class="fcard" data-p="transit"><div class="fc-h"><span>交通工具</span><b>${F.vehicle?esc(F.vehicle):'未填寫'}</b></div>
+  <div class="fc-t">交通明細</div>${it||'<div class="fc-r" style="color:var(--sub)">尚未加入路段</div>'}
+  <div class="fc-f"><span>金額</span><b>${money(legTotal(F.legs))}</b></div></div>`;
+}
+function transitSheet(){
+  const d=trDB();F.legs=F.legs||[];
+  const sync=()=>{const t=legTotal(F.legs);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
+  const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
+  const legsHtml=()=>F.legs.length?F.legs.map((x,i)=>`<div class="leg"><input class="lin" data-k="lf" data-i="${i}" placeholder="從哪裡" autocomplete="off" value="${esc(x.f||'')}"><span class="la">→</span><input class="lin" data-k="lt" data-i="${i}" placeholder="到哪裡" autocomplete="off" value="${esc(x.t||'')}"><input class="pin2" data-k="lp" data-i="${i}" inputmode="decimal" placeholder="價錢" value="${x.p||''}"><button class="rdel" data-k="rm" data-i="${i}">✕</button></div>`).join(''):'<div class="li" style="color:var(--sub)">尚未加入路段，點下方「新增路段」</div>';
+  const vehHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
+    const its=d.vehicles.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
+    return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="pveh" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delv" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
+  const routeSug=(q,i)=>{const k=q.trim().toLowerCase();if(!k)return '';
+    const its=trRoutes().map((r,j)=>({...r,j})).filter(r=>((r.f||'')+(r.t||'')).toLowerCase().includes(k));
+    return its.map(r=>`<div class="li"><span data-k="proute" data-i="${i}" data-j="${r.j}" style="flex:1;padding:8px 0">${esc((r.f||'?')+' → '+(r.t||'?'))}</span><small>${r.p?money(r.p):''}</small><button class="rdel" data-k="delr" data-j="${r.j}">✕</button></div>`).join('');};
+  sheet(`<h3>交通明細</h3>
+    <div class="frow"><span>交通工具：</span><input id="vhin" class="eatin" placeholder="例：高鐵、捷運、計程車" autocomplete="off" value="${esc(F.vehicle)}"></div>
+    <div id="vhl">${vehHtml('')}</div>
+    <div id="legs">${legsHtml()}</div>
+    <div id="rsug"></div>
+    <button class="btn ghost" data-k="addleg">＋ 新增路段</button>
+    <div class="tot">總計 <b id="otot">${money(legTotal(F.legs))}</b></div>
+    <button class="btn" data-k="ok">完成</button><button class="btn ghost" data-k="clr">清空路段</button>`,el=>{
+    const vin=el.querySelector('#vhin'),vl=el.querySelector('#vhl'),lg=el.querySelector('#legs'),rs=el.querySelector('#rsug');let down=null;
+    const upd=()=>{el.querySelector('#otot').textContent=money(legTotal(F.legs));sync();};
+    const redraw=()=>{lg.innerHTML=legsHtml();rs.innerHTML='';vl.innerHTML=vehHtml(vin.value);upd();};
+    const commitVeh=()=>{const v=vin.value.trim();if(v===F.vehicle)return;
+      if(v&&!d.vehicles.some(r=>r.name===v)){d.vehicles.push({id:uid(),name:v,routes:[]});save();}
+      F.vehicle=v;vl.innerHTML=vehHtml(vin.value);sync();};
+    el.addEventListener('pointerdown',e=>{down=e.target.closest('[data-k]');},true);
+    vin.addEventListener('input',()=>{vl.innerHTML=vehHtml(vin.value);});
+    vin.addEventListener('blur',()=>{setTimeout(()=>{const k=down&&down.dataset.k;if(k&&!['x','ok','clr','addleg'].includes(k))return;commitVeh();},0);});
+    el.addEventListener('input',e=>{const t=e.target,k=t.dataset.k;if(!k||!['lf','lt','lp'].includes(k))return;const i=+t.dataset.i,x=F.legs[i];
+      if(k==='lf')x.f=t.value;else if(k==='lt')x.t=t.value;else x.p=parseFloat(t.value)||0;
+      if(k!=='lp'){delete x.n;rs.innerHTML=routeSug(t.value,i);}else{rs.innerHTML='';}
+      upd();});
+    el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
+      if(k==='ok'){commitVeh();F.legs=F.legs.filter(x=>x.f||x.t||x.p);closeSheet();sync();}
+      else if(k==='clr'){F.legs=[];redraw();}
+      else if(k==='addleg'){commitVeh();F.legs.push({f:'',t:'',p:0});lg.innerHTML=legsHtml();rs.innerHTML='';const ins=lg.querySelectorAll('[data-k=lf]');if(ins.length)ins[ins.length-1].focus();}
+      else if(k==='rm'){F.legs.splice(i,1);redraw();}
+      else if(k==='pveh'){F.vehicle=d.vehicles[i].name;vin.value=F.vehicle;redraw();}
+      else if(k==='delv'){ev.stopPropagation();const n=d.vehicles[i].name;if(!confirm('從清單刪除「'+n+'」？（已記的帳不受影響）'))return;d.vehicles.splice(i,1);if(F.vehicle===n){F.vehicle='';vin.value='';}save();redraw();}
+      else if(k==='proute'){const r=trRoutes()[+t.dataset.j],x=F.legs[i];x.f=r.f;x.t=r.t;if(!x.p&&r.p)x.p=r.p;delete x.n;redraw();}
+      else if(k==='delr'){const L=trRoutes(),r=L[+t.dataset.j];if(!confirm('從常用清單刪除「'+(r.f||'?')+' → '+(r.t||'?')+'」？（已記的帳不受影響）'))return;L.splice(+t.dataset.j,1);save();rs.innerHTML='';}
+    };
+  });
+}
 function fixFood(){
   if(!isFood())return;F.items=F.items||[];
   if(!F.items.length&&calc(F.amt)>0)F.items=[{n:F.dish||'餐點',q:1,p:calc(F.amt)}];
@@ -1423,7 +1492,7 @@ function pageDraw(){
   }else{
     const c=S.cats[F.type]?.find(x=>x.id===F.cat),bl=budgetLeft(),d=new Date(F.date+'T00:00:00');
     const row=(ic,label,val,p,sub)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv">${val}${sub?`<small>${sub}</small>`:''}</span><span class="chv">›</span></div>`;
-    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'點此填寫餐點明細':isSal()?'點此填寫薪資明細':isTrip()?'點此填寫旅遊明細':'輸入金額'))}</span></div>`;
+    const amtRow=(ic,label,id,key,p)=>`<div class="pr" data-p="${p}"><span class="pi">${ic}</span><span class="pl">${label}</span><span class="pv ${F[key]?'':'ph'}" id="${id}">${F[key]?fmtAmt(F[key]):(key==='fee'?'0':(isFood()?'點此填寫餐點明細':isSal()?'點此填寫薪資明細':isTrip()?'點此填寫旅遊明細':isTransit()?'點此填寫交通明細':'輸入金額'))}</span></div>`;
     html=`<div class="pg-h"><button class="l x" data-p="close">✕</button><div class="seg3">${[['e','支出'],['i','收入'],['t','轉帳']].map(([k,n])=>`<button data-p="type" data-v="${k}" class="${F.type===k?'on':''}">${n}</button>`).join('')}</div><button class="r" data-p="save">儲存</button></div>
     <div class="pg-b"><label class="pg-date"><span>${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日週${W[d.getDay()]}</span><input type="date" data-pf="date" value="${F.date}"></label>
     ${amtRow('🪙','金額','v-amt','amt','amt')}
@@ -1434,7 +1503,7 @@ function pageDraw(){
     <div class="pr d" data-p="tags"><span class="pl" style="${F.tags.length?'color:var(--tx)':''}">${F.tags.length?F.tags.map(x=>'#'+esc(x)).join(' '):'標籤'}</span><span class="pi">🏷️</span></div>
     <div class="pr d" data-p="photo"><span class="pl">收據照片最多3張</span><span class="pi">📷</span></div>
     ${F.ph.length?`<div class="thumbs">${F.ph.map((p,i)=>`<div class="th" data-p="viewph" data-i="${i}">${p.url?`<img src="${p.url}" alt="">`:'…'}</div>`).join('')}</div>`:''}
-    ${foodCard()}${salCard()}${tripCard()}
+    ${foodCard()}${salCard()}${tripCard()}${transitCard()}
     <textarea class="note" data-pf="note" placeholder="寫點備註吧...">${esc(F.note)}</textarea>
     ${F.id?'':`<label class="pr d"><span class="pl" style="color:var(--tx)">重複</span><select data-pf="rep"><option value="">不重複</option>${Object.entries(FREQ).map(([k,v])=>`<option value="${k}" ${F.rep===k?'selected':''}>${v}</option>`).join('')}</select></label>`}
     <div style="height:30px"></div></div>
@@ -1471,6 +1540,7 @@ async function saveForm(again){
   const old=F.id?S.tx.find(t=>t.id===F.id):null;
   const t={id:F.id||uid(),ts:old?.ts||Date.now(),book:old?.book||S.cur,type:F.type,amt,cat:F.type==='t'?'':F.cat,acc:F.acc,to:F.type==='t'?F.to:'',fee:F.type==='t'?calc(F.fee):0,date:F.date,note:String(F.note).trim(),member:F.type==='t'?'':F.member,tags:[...F.tags],photos:F.ph.map(p=>p.id)};
   delete t.pay;
+  if(isTransit()){t.vehicle=F.vehicle||'';t.legs=F.legs.filter(x=>x.f||x.t||x.p).map(x=>({...x}));t.lsum=legSummary(t.legs);learnTransit(t);}
   if(isTrip()){if(F.pay&&F.pay!==F.date)t.pay=F.pay;t.place=F.place||'';t.titems=F.titems.filter(x=>x.n).map(x=>({...x}));t.tsum=dishSummary(t.titems);learnTrip(t);}
   if(isSal()){t.src=F.src||'';t.sitems=F.sitems.filter(x=>x.n).map(x=>({n:x.n,a:x.a}));learnSal(t);}
   if(isFood()){t.meal=F.meal||'';t.rest=F.rest||'';t.dish=dishSummary(F.items)||F.dish||'';t.items=F.items.filter(x=>x.n).map(x=>({...x}));learnEat(t);}
@@ -1485,14 +1555,14 @@ async function saveForm(again){
 const PGACT={
   close(){if(F.mode!=='rec'&&(F.amt||F.note)&&!F.id&&!confirm('放棄這筆記錄？'))return;closeForm();},
   back(){F.page='main';F.q='';F.cedit=false;pageDraw();},
-  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';fixFood();fixSal();fixTrip();pageDraw();},
-  sal(){salSheet();},trip(){tripSheet();},
-  amt(){if(isLock()){document.activeElement&&document.activeElement.blur();isFood()?dishSheet():isSal()?salSheet():tripSheet();return;}F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
+  type(el){F.type=el.dataset.v;F.cat='';F.kt='amt';fixFood();fixSal();fixTrip();fixTransit();pageDraw();},
+  sal(){salSheet();},trip(){tripSheet();},transit(){transitSheet();},
+  amt(){if(isLock()){document.activeElement&&document.activeElement.blur();isFood()?dishSheet():isSal()?salSheet():isTrip()?tripSheet():transitSheet();return;}F.kt='amt';F.kp=true;document.activeElement&&document.activeElement.blur();pageDraw();},
   fee(){F.kt='fee';F.kp=true;pageDraw();},
   done(){F[F.kt]=F[F.kt]?String(calc(F[F.kt])||''):'';F.kp=false;pageDraw();},
   meal(el){F.meal=F.meal===el.dataset.v?'':el.dataset.v;pageDraw();},dish(){dishSheet();},
   cat(){F.page='cat';pageDraw();},acc(){F.page='acc';F.q='';pageDraw();},to(){F.page='to';F.q='';pageDraw();},member(){F.page='member';F.q='';pageDraw();},
-  pickcat(el){F.cat=el.dataset.id;F.page='main';fixFood();fixSal();fixTrip();pageDraw();},
+  pickcat(el){F.cat=el.dataset.id;F.page='main';fixFood();fixSal();fixTrip();fixTransit();pageDraw();},
   pick(el){const id=el.dataset.id;if(F.page==='acc')F.acc=id;else if(F.page==='to')F.to=id;else F.member=id;F.page='main';F.q='';pageDraw();},
   newcat(){F.nc={id:null,name:'',icon:'🍴',tab:'c'};F.page='newcat';pageDraw();},
   catedit(el){const c=S.cats[F.type].find(x=>x.id===el.dataset.id);if(!c)return;F.nc={id:c.id,name:c.name,icon:c.icon,tab:'c'};F.page='newcat';pageDraw();},
