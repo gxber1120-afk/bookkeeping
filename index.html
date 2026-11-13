@@ -267,6 +267,7 @@ header.ctr h1{text-align:center}
 .paydt{position:relative}.paydt input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
 .leg{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--dim)}.leg .la{color:var(--sub)}.leg .lin{flex:1;min-width:0;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;outline:none;font-size:16px;padding:6px 2px}.leg .lin::placeholder,.leg .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.leg .pin2{width:64px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:6px 2px}
 #menul .ord{padding:8px 6px}.ord.sel{background:rgba(76,175,143,.12)}.ord .pin2{width:56px}
+.mth{width:46px;height:46px;border-radius:10px;flex:none;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:20px;padding:0}.mth.has{border:0}
 </style>
 </head>
 <body>
@@ -493,7 +494,7 @@ function listBody(searching){
   const g={};list.forEach(t=>(g[t.date]??=[]).push(t));
   return Object.keys(g).sort((a,b)=>(ui.asc?1:-1)*a.localeCompare(b)).map(d=>{
     let de=0,di=0;g[d].forEach(t=>{if(t.type==='e')de+=t.amt;else if(t.type==='i')di+=t.amt;else de+=t.fee||0;});
-    return `<div class="dh"><span>${d.slice(5)} 週${W[new Date(d+'T00:00:00').getDay()]}</span><span>${di?'<span class="i">收 '+money(di)+'</span> ':''}${de?'<span class="e">支 '+money(de)+'</span>':''}</span></div>`+g[d].map(row).join('');
+    return `<div class="dh"><span>${d.slice(5)} 週${W[new Date(d+'T00:00:00').getDay()]}</span><span>${di?'<span class="i">收 '+money(di)+'</span> ':''}${de?'<span class="e">支 '+money(de)+'</span>':''}</span></div>`+g[d].map(t=>row(t)).join('');
   }).join('')||'<div class="empty">還沒有記錄<br>點下方「記一筆」開始記帳</div>';
 }
 function calView(){
@@ -510,7 +511,7 @@ function calView(){
   const dl=bookTx().filter(t=>t.date===ui.sel).sort((a,b)=>(b.ts||0)-(a.ts||0));
   let de=0,di=0;dl.forEach(t=>{if(t.type==='e')de+=t.amt;else if(t.type==='i')di+=t.amt;else de+=t.fee||0;});
   return `<div class="wk">${W.map(w=>`<span>週${w}</span>`).join('')}</div><div class="cal">${cells}</div>`
-    +`<div class="sb">支出:${money(de)}${di?'　收入:'+money(di):''}</div>`+(dl.map(row).join('')||'<div class="emp">沒有記錄。按［+］新增記錄。</div>');
+    +`<div class="sb">支出:${money(de)}${di?'　收入:'+money(di):''}</div>`+(dl.map(t=>row(t)).join('')||'<div class="emp">沒有記錄。按［+］新增記錄。</div>');
 }
 function home(){
   const searching=ui.q.trim()!=='';
@@ -1117,8 +1118,8 @@ const idb=(()=>{let p;
   const open=()=>p||(p=new Promise((res,rej)=>{const r=indexedDB.open('mdj_photos',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));
   const run=async(m,fn)=>{const db=await open();return new Promise((res,rej)=>{const t=db.transaction('p',m),q=fn(t.objectStore('p'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);});};
   return {put:(k,v)=>run('readwrite',s=>s.put(v,k)),get:k=>run('readonly',s=>s.get(k)),del:k=>run('readwrite',s=>s.delete(k))};})();
-function compress(file){return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
-  img.onload=()=>{const sc=Math.min(1,1280/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.75));};
+function compress(file,max){max=max||1280;return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{const sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.75));};
   img.onerror=()=>{URL.revokeObjectURL(u);rej();};img.src=u;});}
 const isOp=c=>'+-×÷−'.includes(c);
 const lastNum=s=>s.split(/[+\-×÷−]/).pop();
@@ -1400,19 +1401,21 @@ function fixFood(){
   if(!F.items.length&&calc(F.amt)>0)F.items=[{n:F.dish||'餐點',q:1,p:calc(F.amt)}];
   F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';
 }
-function dishSheet(){
-  const d=eatDB();F.items=F.items||[];
+async function dishSheet(){
+  const d=eatDB();F.items=F.items||[];const imgs={};
+  for(const m of dishList()){if(m.img){try{imgs[m.img]=await idb.get(m.img);}catch(e){}}}
   const sync=()=>{F.dish=dishSummary(F.items);const t=itemsTotal(F.items);F.amt=t>0?String(Math.round(t*100)/100):'';pageDraw();};
   const rank=(n,k)=>n.toLowerCase().startsWith(k)?0:1;
   // 菜單列：這間餐廳登記過的菜單 + 這筆已選但不在菜單內的餐點
   const rowsOf=q=>{const k=q.trim().toLowerCase(),L=dishList();
-    const rows=L.map((m,i)=>({n:m.n,p:m.p||0,mi:i}));
+    const rows=L.map((m,i)=>({n:m.n,p:m.p||0,mi:i,img:m.img}));
     F.items.forEach(o=>{if(!L.some(m=>m.n===o.n))rows.push({n:o.n,p:o.p||0,mi:-1});});
     return rows.filter(r=>!k||r.n.toLowerCase().includes(k)).sort((a,b)=>k?rank(a.n,k)-rank(b.n,k):0);};
   const menuHtml=q=>{const rows=rowsOf(q);
     if(!rows.length)return `<div class="li" style="color:var(--sub)">${q.trim()?'菜單裡沒有這項，可在下方新增':(F.rest?'這間餐廳還沒有菜單，請在下方新增餐點':'尚無菜單，請先輸入餐廳或新增餐點')}</div>`;
     return rows.map(r=>{const o=F.items.find(x=>x.n===r.n),qn=o?o.q:0,key=encodeURIComponent(r.n);
-      return `<div class="ord ${qn?'sel':''}"><span class="on">${esc(r.n)}</span><input class="pin2" data-k="mp" data-n="${key}" inputmode="decimal" placeholder="價錢" value="${r.p||''}"><button data-k="mdec" data-n="${key}">−</button><b>${qn}</b><button data-k="minc" data-n="${key}">＋</button>${r.mi>=0?`<button class="rdel" data-k="mdel" data-n="${key}">✕</button>`:'<span style="width:22px"></span>'}</div>`;}).join('');};
+      const im=r.img&&imgs[r.img];
+      return `<div class="ord ${qn?'sel':''}"><button class="mth ${im?'has':''}" data-k="mph" data-n="${key}" style="${im?"background-image:url('"+im+"')":''}">${im?'':'📷'}</button><span class="on">${esc(r.n)}</span><input class="pin2" data-k="mp" data-n="${key}" inputmode="decimal" placeholder="價錢" value="${r.p||''}"><button data-k="mdec" data-n="${key}">−</button><b>${qn}</b><button data-k="minc" data-n="${key}">＋</button>${r.mi>=0?`<button class="rdel" data-k="mdel" data-n="${key}">✕</button>`:'<span style="width:22px"></span>'}</div>`;}).join('');};
   const restHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
     const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
     return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="prest" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
@@ -1451,10 +1454,17 @@ function dishSheet(){
     el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
       if(k==='ok'){commitRest();commitNew();closeSheet();pageDraw();}
       else if(k==='addm'){commitNew();}
+      else if(k==='mph'){const n=nm(t),pk=document.createElement('input');pk.type='file';pk.accept='image/*';
+        pk.onchange=async()=>{const f=pk.files[0];if(!f)return;
+          try{const url=await compress(f,320),L=dishList();let m=L.find(x=>x.n===n);
+            if(!m){const o=F.items.find(x=>x.n===n);m={n,p:o?o.p||0:0};L.push(m);}
+            if(!m.img)m.img=uid();await idb.put(m.img,url);imgs[m.img]=url;save();ml.innerHTML=menuHtml(inp.value);}
+          catch(e){alert('這張照片無法讀取或儲存');}};
+        pk.click();}
       else if(k==='clr'){F.items=[];redraw();}
       else if(k==='minc'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o)o.q++;else{const m=dishList().find(x=>x.n===n);F.items.push({n,q:1,p:m?m.p||0:0});}redraw();}
       else if(k==='mdec'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o){if(o.q>1)o.q--;else F.items=F.items.filter(x=>x!==o);}redraw();}
-      else if(k==='mdel'){const n=nm(t);if(!confirm('從菜單刪除「'+n+'」？（已記的帳不受影響）'))return;const L=dishList(),j=L.findIndex(x=>x.n===n);if(j>=0)L.splice(j,1);F.items=F.items.filter(x=>x.n!==n);save();redraw();}
+      else if(k==='mdel'){const n=nm(t);if(!confirm('從菜單刪除「'+n+'」？（已記的帳不受影響）'))return;const L=dishList(),j=L.findIndex(x=>x.n===n);if(j>=0){if(L[j].img){try{idb.del(L[j].img);}catch(e){}}L.splice(j,1);}F.items=F.items.filter(x=>x.n!==n);save();redraw();}
       else if(k==='prest'){F.rest=d.rests[i].name;rin.value=F.rest;redraw();}
       else if(k==='delr'){ev.stopPropagation();const n=d.rests[i].name;if(!confirm('從清單刪除餐廳「'+n+'」？（已記的帳不受影響）'))return;d.rests.splice(i,1);if(F.rest===n){F.rest='';rin.value='';}save();redraw();}
     };
@@ -1692,6 +1702,8 @@ const act={
   async backup(){
     const ph={};let miss=0;
     for(const t of S.tx)for(const id of (t.photos||[])){try{const v=await idb.get(id);if(v)ph[id]=v;else miss++;}catch(e){miss++;}}
+    const eatImgs=[...eatDB().rests.flatMap(r=>r.dishes),...eatDB().gen].map(x=>x.img).filter(Boolean);
+    for(const id of eatImgs){try{const v=await idb.get(id);if(v)ph[id]=v;}catch(e){}}
     dl('ledger-backup-'+today()+'.json',JSON.stringify({...S,_photos:ph}),'application/json');
     const n=Object.keys(ph).length;if(n||miss)alert('已備份，含 '+n+' 張照片'+(miss?'（'+miss+' 張找不到）':''));
   },
