@@ -268,6 +268,7 @@ header.ctr h1{text-align:center}
 .leg{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--dim)}.leg .la{color:var(--sub)}.leg .lin{flex:1;min-width:0;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;outline:none;font-size:16px;padding:6px 2px}.leg .lin::placeholder,.leg .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.leg .pin2{width:64px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:6px 2px}
 #menul .ord{padding:8px 6px}.ord.sel{background:rgba(76,175,143,.12)}.ord .pin2{width:56px}
 .mth{width:46px;height:46px;border-radius:10px;flex:none;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:20px;padding:0}.mth.has{border:0}
+#imgv{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}#imgv img{max-width:100%;max-height:62vh;border-radius:12px;object-fit:contain}.iv-t{color:#fff;font-size:20px}.iv-b{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.iv-b button{background:#2b2b2e;color:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:17px}.iv-b .dg{color:#ff6b61}.fc-img{width:30px;height:30px;border-radius:6px;background:#333 center/cover no-repeat;flex:none;margin-right:8px}
 </style>
 </head>
 <body>
@@ -1182,9 +1183,26 @@ function learnEat(t){
 }
 const itemsTotal=a=>(a||[]).reduce((s,x)=>s+(+x.q||0)*(+x.p||0),0);
 const dishSummary=a=>(a||[]).map(x=>x.n+(x.q>1?'×'+x.q:'')).join('、');
+let DISHIMG={},dishImgLoaded=false;
+async function loadDishImgs(){
+  if(dishImgLoaded)return;dishImgLoaded=true;let got=false;
+  const d=eatDB();
+  for(const m of [...d.rests.flatMap(r=>r.dishes),...d.gen]){if(m.img&&!DISHIMG[m.img]){try{const v=await idb.get(m.img);if(v){DISHIMG[m.img]=v;got=true;}}catch(e){}}}
+  if(got&&F&&F.page==='main')pageDraw();
+}
+const dishImgOf=n=>{const m=dishList().find(x=>x.n===n);return m&&m.img?DISHIMG[m.img]:'';};
+function viewDishImg(n,url,onReplace,onRemove){
+  closeDishView();
+  const v=document.createElement('div');v.id='imgv';
+  v.innerHTML=`<div class="iv-t">${esc(n)}</div><img src="${url}" alt=""><div class="iv-b"><button data-v="rep">更換照片</button><button data-v="rm" class="dg">移除照片</button><button data-v="x">關閉</button></div>`;
+  v.onclick=e=>{const k=e.target.dataset.v;if(!k)return;if(k==='x'){closeDishView();}else if(k==='rep'){closeDishView();onReplace();}else if(k==='rm'){if(confirm('移除「'+n+'」的照片？')){closeDishView();onRemove();}}};
+  document.body.appendChild(v);
+}
+function closeDishView(){const v=document.getElementById('imgv');if(v)v.remove();}
 function foodCard(){
   if(!isFood()||(!F.rest&&!(F.items||[]).length))return '';
-  const it=(F.items||[]).map(x=>`<div class="fc-r"><span class="fc-n">${esc(x.n)}</span><span class="fc-q">×${x.q}</span><span class="fc-p">${money(x.p)}</span><span class="fc-s">${money(x.q*x.p)}</span></div>`).join('');
+  loadDishImgs();
+  const it=(F.items||[]).map(x=>{const im=dishImgOf(x.n);return `<div class="fc-r">${im?`<span class="fc-img" style="background-image:url('${im}')"></span>`:''}<span class="fc-n">${esc(x.n)}</span><span class="fc-q">×${x.q}</span><span class="fc-p">${money(x.p)}</span><span class="fc-s">${money(x.q*x.p)}</span></div>`;}).join('');
   return `<div class="fcard" data-p="dish"><div class="fc-h"><span>餐廳</span><b>${F.rest?esc(F.rest):'未填寫'}</b></div>
   <div class="fc-t">餐點明細</div>${it||'<div class="fc-r" style="color:var(--sub)">尚未加入餐點</div>'}
   <div class="fc-f"><span>金額</span><b>${money(itemsTotal(F.items))}</b></div></div>`;
@@ -1454,17 +1472,20 @@ async function dishSheet(){
     el.onclick=ev=>{const t=ev.target.closest('[data-k]');if(!t)return;const k=t.dataset.k,i=+t.dataset.i;
       if(k==='ok'){commitRest();commitNew();closeSheet();pageDraw();}
       else if(k==='addm'){commitNew();}
-      else if(k==='mph'){const n=nm(t),pk=document.createElement('input');pk.type='file';pk.accept='image/*';
+      else if(k==='mph'){const n=nm(t),cur=(dishList().find(x=>x.n===n)||{}).img;
+        const pick=()=>{const pk=document.createElement('input');pk.type='file';pk.accept='image/*';
         pk.onchange=async()=>{const f=pk.files[0];if(!f)return;
           try{const url=await compress(f,320),L=dishList();let m=L.find(x=>x.n===n);
             if(!m){const o=F.items.find(x=>x.n===n);m={n,p:o?o.p||0:0};L.push(m);}
-            if(!m.img)m.img=uid();await idb.put(m.img,url);imgs[m.img]=url;save();ml.innerHTML=menuHtml(inp.value);}
+            if(!m.img)m.img=uid();await idb.put(m.img,url);imgs[m.img]=url;DISHIMG[m.img]=url;save();ml.innerHTML=menuHtml(inp.value);pageDraw();}
           catch(e){alert('這張照片無法讀取或儲存');}};
-        pk.click();}
+        pk.click();};
+        if(cur&&imgs[cur])viewDishImg(n,imgs[cur],pick,()=>{const m=dishList().find(x=>x.n===n);if(m&&m.img){try{idb.del(m.img);}catch(e){}delete imgs[m.img];delete DISHIMG[m.img];delete m.img;save();ml.innerHTML=menuHtml(inp.value);pageDraw();}});
+        else pick();}
       else if(k==='clr'){F.items=[];redraw();}
       else if(k==='minc'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o)o.q++;else{const m=dishList().find(x=>x.n===n);F.items.push({n,q:1,p:m?m.p||0:0});}redraw();}
       else if(k==='mdec'){const n=nm(t),o=F.items.find(x=>x.n===n);if(o){if(o.q>1)o.q--;else F.items=F.items.filter(x=>x!==o);}redraw();}
-      else if(k==='mdel'){const n=nm(t);if(!confirm('從菜單刪除「'+n+'」？（已記的帳不受影響）'))return;const L=dishList(),j=L.findIndex(x=>x.n===n);if(j>=0){if(L[j].img){try{idb.del(L[j].img);}catch(e){}}L.splice(j,1);}F.items=F.items.filter(x=>x.n!==n);save();redraw();}
+      else if(k==='mdel'){const n=nm(t);if(!confirm('從菜單刪除「'+n+'」？（已記的帳不受影響）'))return;const L=dishList(),j=L.findIndex(x=>x.n===n);if(j>=0){if(L[j].img){try{idb.del(L[j].img);}catch(e){}delete DISHIMG[L[j].img];}L.splice(j,1);}F.items=F.items.filter(x=>x.n!==n);save();redraw();}
       else if(k==='prest'){F.rest=d.rests[i].name;rin.value=F.rest;redraw();}
       else if(k==='delr'){ev.stopPropagation();const n=d.rests[i].name;if(!confirm('從清單刪除餐廳「'+n+'」？（已記的帳不受影響）'))return;d.rests.splice(i,1);if(F.rest===n){F.rest='';rin.value='';}save();redraw();}
     };
