@@ -269,6 +269,11 @@ header.ctr h1{text-align:center}
 #menul .ord{padding:8px 6px}.ord.sel{background:rgba(76,175,143,.12)}.ord .pin2{width:56px}
 .mth{width:46px;height:46px;border-radius:10px;flex:none;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:20px;padding:0}.mth.has{border:0}
 #imgv{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}#imgv img{max-width:100%;max-height:62vh;border-radius:12px;object-fit:contain}.iv-t{color:#fff;font-size:20px}.iv-b{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.iv-b button{background:#2b2b2e;color:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:17px}.iv-b .dg{color:#ff6b61}.fc-img{width:30px;height:30px;border-radius:6px;background:#333 center/cover no-repeat;flex:none;margin-right:8px}
+#menul .mi{align-items:center;gap:12px;padding:12px 6px}.mi-l{width:min(46vw,200px);flex:none}
+.mi-ph-w{position:relative}#menul .mth2{display:block;width:100%;height:max(11vh,84px);border-radius:12px;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:30px;padding:0}#menul .mth2.has{border:0}
+#menul .mi-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#ff6b61;font-size:12px;line-height:24px;padding:0}
+.mi-nm{display:flex;align-items:center;gap:6px;margin-top:6px}.mi-nm .nm{flex:1;min-width:0;font-size:16px;line-height:1.25;overflow-wrap:anywhere}.mi-nm .pin2{width:54px;flex:none}
+.mi-r{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:10px}.mi-r button{width:36px;height:36px;border-radius:50%;border:1px solid var(--dim);background:none;color:var(--tx);font-size:20px;line-height:1;padding:0}.mi-r b{min-width:24px;text-align:center;font-size:19px}
 </style>
 </head>
 <body>
@@ -1433,7 +1438,7 @@ async function dishSheet(){
     if(!rows.length)return `<div class="li" style="color:var(--sub)">${q.trim()?'菜單裡沒有這項，可在下方新增':(F.rest?'這間餐廳還沒有菜單，請在下方新增餐點':'尚無菜單，請先輸入餐廳或新增餐點')}</div>`;
     return rows.map(r=>{const o=F.items.find(x=>x.n===r.n),qn=o?o.q:0,key=encodeURIComponent(r.n);
       const im=r.img&&imgs[r.img];
-      return `<div class="ord ${qn?'sel':''}"><button class="mth ${im?'has':''}" data-k="mph" data-n="${key}" style="${im?"background-image:url('"+im+"')":''}">${im?'':'📷'}</button><span class="on">${esc(r.n)}</span><input class="pin2" data-k="mp" data-n="${key}" inputmode="decimal" placeholder="價錢" value="${r.p||''}"><button data-k="mdec" data-n="${key}">−</button><b>${qn}</b><button data-k="minc" data-n="${key}">＋</button>${r.mi>=0?`<button class="rdel" data-k="mdel" data-n="${key}">✕</button>`:'<span style="width:22px"></span>'}</div>`;}).join('');};
+      return `<div class="ord mi ${qn?'sel':''}"><div class="mi-l"><div class="mi-ph-w"><button class="mth2 ${im?'has':''}" data-k="mph" data-n="${key}" style="${im?"background-image:url('"+im+"')":''}">${im?'':'📷'}</button>${r.mi>=0?`<button class="mi-x" data-k="mdel" data-n="${key}">✕</button>`:''}</div><div class="mi-nm"><span class="nm">${esc(r.n)}</span><input class="pin2" data-k="mp" data-n="${key}" inputmode="decimal" placeholder="價錢" value="${r.p||''}"></div></div><div class="mi-r"><button data-k="mdec" data-n="${key}">−</button><b>${qn}</b><button data-k="minc" data-n="${key}">＋</button></div></div>`;}).join('');};
   const restHtml=q=>{const k=q.trim().toLowerCase();if(!k)return '';
     const its=d.rests.map((r,i)=>({n:r.name,i})).filter(x=>x.n.toLowerCase()!==k&&x.n.toLowerCase().includes(k)).sort((a,b)=>rank(a.n,k)-rank(b.n,k));
     return its.length?`<div class="chips">${its.map(x=>`<span class="chip" data-k="prest" data-i="${x.i}">${esc(x.n)}<b class="cx" data-k="delr" data-i="${x.i}">✕</b></span>`).join('')}</div>`:'';};
@@ -1475,7 +1480,7 @@ async function dishSheet(){
       else if(k==='mph'){const n=nm(t),cur=(dishList().find(x=>x.n===n)||{}).img;
         const pick=()=>{const pk=document.createElement('input');pk.type='file';pk.accept='image/*';
         pk.onchange=async()=>{const f=pk.files[0];if(!f)return;
-          try{const url=await compress(f,320),L=dishList();let m=L.find(x=>x.n===n);
+          try{const url=await compress(f,640),L=dishList();let m=L.find(x=>x.n===n);
             if(!m){const o=F.items.find(x=>x.n===n);m={n,p:o?o.p||0:0};L.push(m);}
             if(!m.img)m.img=uid();await idb.put(m.img,url);imgs[m.img]=url;DISHIMG[m.img]=url;save();ml.innerHTML=menuHtml(inp.value);pageDraw();}
           catch(e){alert('這張照片無法讀取或儲存');}};
