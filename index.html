@@ -271,6 +271,43 @@ header.ctr h1{text-align:center}
 .leg{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--dim)}.leg .la{color:var(--sub)}.leg .lin{flex:1;min-width:0;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;outline:none;font-size:16px;padding:6px 2px}.leg .lin::placeholder,.leg .pin2::placeholder{-webkit-text-fill-color:var(--sub)}.leg .pin2{width:64px;background:transparent!important;border:0;border-bottom:1px solid var(--dim);border-radius:0;color:#fff!important;-webkit-text-fill-color:#fff;text-align:right;font-size:16px;outline:none;padding:6px 2px}
 #menul .ord{padding:8px 6px}.ord.sel{background:rgba(76,175,143,.12)}.ord .pin2{width:56px}
 .mth{width:46px;height:46px;border-radius:10px;flex:none;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:20px;padding:0}.mth.has{border:0}
+
+/* ---------- 寵物貓 ---------- */
+#petpage{position:fixed;inset:0;max-width:520px;margin:0 auto;z-index:16;display:none;flex-direction:column;background:#f6ecdc;color:#5b4636;overflow:hidden}
+#petpage.on{display:flex}
+.pt-h{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:rgba(255,255,255,.55);position:relative;z-index:3}
+.pt-h button{background:none;border:0;font-size:26px;color:#5b4636;padding:4px 8px}
+.pt-h .pn{font-size:18px;font-weight:600;text-align:center}.pt-h .pn small{display:block;font-size:12px;font-weight:400;opacity:.75}
+#petroom{flex:1;position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:linear-gradient(#fbf5ea 0,#fbf5ea 38%,#e8c99d 38%,#e0bd8c 100%)}
+#petroom:before{content:"";position:absolute;left:0;right:0;top:38%;height:2px;background:rgba(120,80,40,.18)}
+#petroom .plant{position:absolute;right:16px;top:calc(38% - 74px);font-size:54px;opacity:.95;pointer-events:none}
+#petroom .rug{position:absolute;left:50%;bottom:12%;width:62%;height:16%;transform:translateX(-50%);border-radius:50%;background:rgba(255,255,255,.35);pointer-events:none}
+.cat{position:absolute;left:0;top:0;width:170px;height:136px;touch-action:none;cursor:grab;will-change:transform;z-index:2}
+.cat svg{width:100%;height:100%;overflow:visible;display:block;transition:transform .15s}
+.cat .shadow{position:absolute;left:18%;right:12%;bottom:-6px;height:14px;border-radius:50%;background:rgba(80,50,20,.22);filter:blur(2px)}
+.cat .tail{transform-origin:40px 96px;animation:tailw 2.4s ease-in-out infinite}
+.cat .eyes{transform-origin:148px 60px;animation:blink 4.2s infinite}
+.cat .leg{transform-origin:50% 0}
+.cat.walk .la{animation:legA .42s ease-in-out infinite}.cat.walk .lb{animation:legB .42s ease-in-out infinite}
+.cat.walk svg .bd{animation:bob .42s ease-in-out infinite}
+.cat.drag svg{transform:translateY(-6px) rotate(-4deg)}.cat.drag .shadow{transform:scale(.8);opacity:.6}
+.cat.eat .head{animation:eat .5s ease-in-out infinite}
+.cat.love .head{animation:nod .5s ease-in-out 2}
+@keyframes tailw{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes legA{0%,100%{transform:rotate(18deg)}50%{transform:rotate(-18deg)}}
+@keyframes legB{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(18deg)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes eat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(10px) rotate(8deg)}}
+@keyframes nod{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.pt-say{position:absolute;left:50%;top:-34px;transform:translateX(-50%);background:#fff;color:#5b4636;border-radius:12px;padding:5px 10px;font-size:13px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.15);opacity:0;transition:opacity .25s;pointer-events:none}
+.pt-say.on{opacity:1}
+.pt-heart{position:absolute;font-size:22px;pointer-events:none;z-index:4;animation:hrt 1.1s ease-out forwards}
+@keyframes hrt{0%{opacity:1;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-70px) scale(1.2)}}
+.pt-bowl{position:absolute;font-size:38px;pointer-events:none;z-index:1}
+.pt-b{display:flex;gap:10px;justify-content:center;padding:10px 14px calc(12px + var(--safe-b));background:rgba(255,255,255,.55);position:relative;z-index:3}
+.pt-b button{flex:1;max-width:150px;border:0;border-radius:14px;background:#fff;color:#5b4636;padding:10px 0;font-size:15px;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.pt-b button span{display:block;font-size:24px;line-height:1.2}
 #imgv{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px}#imgv img{max-width:100%;max-height:62vh;border-radius:12px;object-fit:contain}.iv-t{color:#fff;font-size:20px}.iv-b{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.iv-b button{background:#2b2b2e;color:#fff;border:0;border-radius:12px;padding:12px 18px;font-size:17px}.iv-b .dg{color:#ff6b61}.fc-img{width:30px;height:30px;border-radius:6px;background:#333 center/cover no-repeat;flex:none;margin-right:8px}
 #menul .mi{align-items:center;gap:12px;padding:12px 6px}.mi-l{width:min(46vw,200px);flex:none}
 .mi-ph-w{position:relative}#menul .mth2{display:block;width:100%;height:max(11vh,84px);border-radius:12px;border:1px dashed #555;background:#2a2a2d center/cover no-repeat;color:#999;font-size:30px;padding:0}#menul .mth2.has{border:0}
@@ -287,12 +324,14 @@ header.ctr h1{text-align:center}
     <button class="tab" data-id="acc" data-act="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5z"/><path d="M5 11v7M10 11v7M14 11v7M19 11v7M3 20h18"/></svg>帳戶</button>
     <button class="tab" data-act="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16"/></svg>記一筆</button>
     <button class="tab" data-id="rep" data-act="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>圖表分析</button>
+    <button class="tab" data-act="pet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10L4 4l4.5 3a9 9 0 0 1 7 0L20 4l-1 6c1 1.2 1.5 2.600 1.500 4.200C20.500 18 16.700 20 12 20s-8.500-2-8.500-5.800C3.500 12.600 4 11.200 5 10z"/><path d="M9 14v.5M15 14v.5M11 16.500h2"/></svg>寵物</button>
     <button class="tab" data-id="more" data-act="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</button>
   </nav>
 </div>
 <div id="rpage"></div>
 <div id="spage"></div>
 <div id="apage"></div>
+<div id="petpage"></div>
 <div id="bpage"></div>
 <div id="page"></div>
 <div id="sheet"></div>
@@ -1822,6 +1861,91 @@ document.addEventListener('change',e=>{
   if(e.target.dataset.chg==='book'){S.cur=e.target.value;save();render();}
 });
 ['gesturestart','gesturechange','gestureend'].forEach(n=>document.addEventListener(n,e=>e.preventDefault()));
+
+/* ---------- 寵物貓 ---------- */
+const CAT_SVG=`<svg viewBox="0 0 200 160"><g class="shadowg"></g>
+<g class="tail"><path d="M42 96C8 92 4 52 26 30" stroke="#8f8f95" stroke-width="17" stroke-linecap="round" fill="none"/><path d="M10 64q8 2 14-2M12 48q9 1 15-4" stroke="#6c6c73" stroke-width="3.500" stroke-linecap="round" fill="none" opacity=".7"/><circle cx="27" cy="30" r="10" fill="#6c6c73"/></g>
+<g class="leg lb" style="transform-origin:62px 118px"><rect x="50" y="116" width="24" height="30" rx="12" fill="#fff"/><ellipse cx="62" cy="146" rx="15" ry="9" fill="#fff" stroke="#e4e4e8"/></g>
+<g class="leg la" style="transform-origin:128px 118px"><rect x="116" y="116" width="24" height="30" rx="12" fill="#fff"/><ellipse cx="128" cy="146" rx="15" ry="9" fill="#fff" stroke="#e4e4e8"/></g>
+<g class="bd"><ellipse cx="92" cy="96" rx="60" ry="37" fill="#9c9ca2"/>
+<path d="M54 66q-5 16 0 32M70 62q-4 18 0 38M86 60q-3 18 0 36M102 62q-3 16 0 32" stroke="#6f6f76" stroke-width="5" stroke-linecap="round" fill="none" opacity=".55"/>
+<ellipse cx="62" cy="116" rx="22" ry="16" fill="#fff"/><ellipse cx="124" cy="108" rx="30" ry="30" fill="#fff"/></g>
+<g class="leg la" style="transform-origin:62px 118px"><rect x="50" y="116" width="24" height="30" rx="12" fill="#fff"/><ellipse cx="62" cy="146" rx="15" ry="9" fill="#fff" stroke="#e4e4e8"/><path d="M57 146v4M63 146v4M69 146v4" stroke="#e8c3c8" stroke-width="1.500"/></g>
+<g class="leg lb" style="transform-origin:128px 118px"><rect x="116" y="116" width="24" height="30" rx="12" fill="#fff"/><ellipse cx="128" cy="146" rx="15" ry="9" fill="#fff" stroke="#e4e4e8"/><path d="M123 146v4M129 146v4M135 146v4" stroke="#e8c3c8" stroke-width="1.500"/></g>
+<g class="head">
+<path d="M114 40L120 8L142 30Z" fill="#9c9ca2"/><path d="M120 33L123 17L134 29Z" fill="#f2a9b4"/>
+<path d="M158 30L178 8L184 42Z" fill="#9c9ca2"/><path d="M164 30L176 17L179 35Z" fill="#f2a9b4"/>
+<ellipse cx="149" cy="63" rx="45" ry="37" fill="#9c9ca2"/>
+<path d="M140 34l2 12M149 32v13M158 34l-2 12M118 56l11 3M180 56l-11 3" stroke="#6f6f76" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+<path d="M149 38c8 12 12 22 9 34h-18c-3-12 1-22 9-34z" fill="#fff"/>
+<ellipse cx="149" cy="80" rx="23" ry="16" fill="#fff"/>
+<g class="eyes"><circle cx="132" cy="60" r="12.500" fill="#6e7a3c"/><circle cx="132" cy="60" r="10" fill="#141414"/><circle cx="129" cy="56.500" r="3" fill="#fff"/>
+<circle cx="166" cy="60" r="12.500" fill="#6e7a3c"/><circle cx="166" cy="60" r="10" fill="#141414"/><circle cx="163" cy="56.500" r="3" fill="#fff"/></g>
+<path d="M144 70h10l-5 6z" fill="#f2a0ad"/><path d="M149 76v4M149 80q-5 4-9 1M149 80q5 4 9 1" stroke="#c98a93" stroke-width="1.600" fill="none" stroke-linecap="round"/>
+<path d="M128 74l-24-5M128 78l-25 3M170 74l24-5M170 78l25 3" stroke="#fff" stroke-width="1.200" opacity=".9"/>
+</g></svg>`;
+const PET={on:false,x:0,y:0,dir:1,tx:null,ty:null,wait:0,mode:'idle',drag:false,raf:0,last:0,say:0,bowl:null,eatT:0};
+const petDB=()=>{if(!S.pet)S.pet={name:'小喵',love:0,fed:0,x:.5,y:.6,dir:1};return S.pet;};
+const petRoom=()=>$('#petroom');
+function petPos(){const r=petRoom(),c=$('#petcat');if(!r||!c)return;
+  const W=r.clientWidth,H=r.clientHeight,sc=.7+.45*Math.min(1,Math.max(0,PET.y/Math.max(1,H-136)));
+  c.style.transform=`translate(${PET.x}px,${PET.y}px) scale(${sc})`;c.style.zIndex=Math.round(PET.y);
+  c.style.transformOrigin='50% 100%';c.firstElementChild.style.transform=`scaleX(${PET.dir})`;}
+function petSay(t,ms=1800){const b=$('#petsay');if(!b)return;b.textContent=t;b.classList.add('on');clearTimeout(PET.say);PET.say=setTimeout(()=>b.classList.remove('on'),ms);}
+function petHeart(n=3){const r=petRoom();if(!r)return;for(let i=0;i<n;i++){const h=document.createElement('div');h.className='pt-heart';h.textContent=['💗','💖','💕'][i%3];
+  h.style.left=(PET.x+60+Math.random()*60)+'px';h.style.top=(PET.y-10+Math.random()*20)+'px';h.style.animationDelay=(i*.15)+'s';r.appendChild(h);setTimeout(()=>h.remove(),1500);}}
+function petStats(){const d=petDB(),el=$('#petstat');if(el)el.textContent='💗 '+d.love+'　🐟 '+d.fed;}
+function petMood(){const d=S.tx.some(t=>t.book===S.cur&&t.date===today());return d?['喵～','今天有記帳，好棒！','摸摸我～','喵嗚～']:['今天記帳了嗎？','喵？還沒記帳喔','餓了…也想記帳','喵～'];}
+function petRand(){const r=petRoom();PET.tx=Math.random()*(r.clientWidth-170);PET.ty=r.clientHeight*.42+Math.random()*(r.clientHeight*.58-140);PET.mode='walk';}
+function petClamp(){const r=petRoom();PET.x=Math.min(Math.max(-20,PET.x),r.clientWidth-150);PET.y=Math.min(Math.max(r.clientHeight*.2,PET.y),r.clientHeight-136);}
+function petTick(t){
+  if(!PET.on)return;const dt=Math.min(.05,(t-PET.last)/1000||0);PET.last=t;const c=$('#petcat');
+  if(c&&!PET.drag){
+    if(PET.eatT>0){PET.eatT-=dt;c.className='cat eat';if(PET.eatT<=0){const d=petDB();d.fed++;d.love+=2;save();petStats();petHeart(4);petSay('好好吃！');PET.bowl=null;const b=$('#petbowl');if(b)b.remove();PET.wait=2;c.className='cat';}}
+    else if(PET.tx!=null){
+      const dx=PET.tx-PET.x,dy=PET.ty-PET.y,d=Math.hypot(dx,dy),sp=(PET.bowl?110:70)*dt;
+      if(d<=Math.max(4,sp)){PET.x=PET.tx;PET.y=PET.ty;PET.tx=PET.ty=null;c.classList.remove('walk');
+        if(PET.bowl){PET.eatT=2.2;PET.dir=PET.bowl.x>PET.x?1:-1;}else PET.wait=1.5+Math.random()*3.5;}
+      else{PET.x+=dx/d*sp;PET.y+=dy/d*sp;if(Math.abs(dx)>3)PET.dir=dx>0?1:-1;c.classList.add('walk');}
+    }else{PET.wait-=dt;c.classList.remove('walk');if(PET.wait<=0){if(Math.random()<.22)petSay(petMood()[Math.floor(Math.random()*4)]);petRand();}}
+    petPos();
+  }
+  PET.raf=requestAnimationFrame(petTick);
+}
+function petOpen(){
+  const d=petDB(),el=$('#petpage');
+  el.innerHTML=`<div class="pt-h"><button data-pet="close">✕</button><div class="pn" data-pet="rename">${esc(d.name)}<small id="petstat"></small></div><button data-pet="rename" style="font-size:20px">✎</button></div>
+  <div id="petroom"><div class="plant">🪴</div><div class="rug"></div>
+  <div class="cat" id="petcat"><div class="pt-say" id="petsay"></div><div style="position:absolute;inset:0">${CAT_SVG}</div><div class="shadow"></div></div></div>
+  <div class="pt-b"><button data-pet="pat"><span>🤚</span>摸摸</button><button data-pet="feed"><span>🐟</span>餵食</button><button data-pet="call"><span>📣</span>過來</button></div>`;
+  el.classList.add('on');PET.on=true;petStats();
+  const r=petRoom();PET.x=d.x*(r.clientWidth-170);PET.y=Math.max(r.clientHeight*.2,d.y*(r.clientHeight-136));PET.dir=d.dir||1;PET.tx=PET.ty=null;PET.wait=1;PET.bowl=null;PET.eatT=0;PET.drag=false;
+  petClamp();petPos();PET.last=performance.now();cancelAnimationFrame(PET.raf);PET.raf=requestAnimationFrame(petTick);
+  setTimeout(()=>petSay(petMood()[0]),400);
+}
+function petClose(){const d=petDB(),r=petRoom();if(r){d.x=PET.x/Math.max(1,r.clientWidth-170);d.y=PET.y/Math.max(1,r.clientHeight-136);d.dir=PET.dir;}save();PET.on=false;cancelAnimationFrame(PET.raf);$('#petpage').classList.remove('on');$('#petpage').innerHTML='';}
+function petPat(){const d=petDB(),c=$('#petcat');d.love++;save();petStats();petHeart(3);petSay(['呼嚕呼嚕～','喵～','好舒服','再摸一下'][Math.floor(Math.random()*4)],1200);c.classList.add('love');setTimeout(()=>c.classList.remove('love'),1100);}
+function petFeed(){const r=petRoom();if(PET.bowl){petSay('碗已經在那邊囉');return;}
+  const bx=40+Math.random()*(r.clientWidth-130),by=r.clientHeight*.55+Math.random()*(r.clientHeight*.3);
+  const b=document.createElement('div');b.className='pt-bowl';b.id='petbowl';b.textContent='🐟';b.style.left=bx+'px';b.style.top=by+'px';r.appendChild(b);
+  PET.bowl={x:bx};PET.tx=Math.min(Math.max(-20,bx-80),r.clientWidth-150);PET.ty=Math.min(by-60,r.clientHeight-136);PET.eatT=0;petSay('有魚！！');}
+document.addEventListener('pointerdown',e=>{
+  const c=e.target.closest('#petcat');const r=petRoom();if(!PET.on||!r||!r.contains(e.target))return;
+  if(c){e.preventDefault();const rect=r.getBoundingClientRect();PET.drag=true;PET.tx=PET.ty=null;PET.eatT=0;
+    const sx=e.clientX,sy=e.clientY,ox=e.clientX-rect.left-PET.x,oy=e.clientY-rect.top-PET.y;let moved=false;
+    c.classList.add('drag');c.classList.remove('walk');
+    const mv=ev=>{if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>6)moved=true;if(!moved)return;PET.x=ev.clientX-rect.left-ox;PET.y=ev.clientY-rect.top-oy;petClamp();petPos();};
+    const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);PET.drag=false;c.classList.remove('drag');PET.wait=2+Math.random()*2;if(!moved)petPat();else petSay('喵～放我下來～',1200);};
+    addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up);
+  }else if(e.target===r||e.target.classList.contains('rug')||e.target.classList.contains('plant')){
+    const rect=r.getBoundingClientRect();PET.tx=Math.min(Math.max(-20,e.clientX-rect.left-85),r.clientWidth-150);PET.ty=Math.min(Math.max(r.clientHeight*.2,e.clientY-rect.top-110),r.clientHeight-136);if(PET.bowl){PET.bowl=null;const b=$('#petbowl');if(b)b.remove();}}
+});
+document.addEventListener('click',e=>{const el=e.target.closest('[data-pet]');if(!el)return;const k=el.dataset.pet;
+  if(k==='close')petClose();else if(k==='pat')petPat();else if(k==='feed')petFeed();
+  else if(k==='call'){const r=petRoom();PET.tx=r.clientWidth/2-85;PET.ty=r.clientHeight-170;PET.bowl=null;petSay('來了來了～');}
+  else if(k==='rename'){const d=petDB(),n=prompt('幫牠取個名字',d.name);if(n&&n.trim()){d.name=n.trim().slice(0,8);save();el.closest('#petpage').querySelector('.pn').firstChild.textContent=d.name;}}
+});
+act.pet=()=>petOpen();
 applyTheme();runRecurring();lock();render();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
