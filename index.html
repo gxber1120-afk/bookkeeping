@@ -2128,14 +2128,17 @@ function buildGLBCat(L){const G=GLB,jp=G.jp,par={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:7
   const shadow=nd(L.shadow,[0,.012,0],[0,0,0],[.62,1,.95]);shadow.a=.26;shadow.tint=[0,0,0];
   return{root,tors,glb:true,J,head:J[2],eL:J[10],eR:J[11],legs:[J[3],J[4],J[5],J[6]],tail:J[7],shadow};}
 function poseGLB(c,t){const K=c.cat,J=K.J,w=c.wk,ph=c.phase;
-  K.tors.p[1]=(c.happyT>0?Math.abs(Math.sin((1.1-c.happyT)*Math.PI*3))*.2:0)+Math.abs(Math.sin(ph))*.02*c.wk;K.tors.r[2]=Math.sin(ph)*.04*c.wk;
-  const sw=Math.sin(ph)*.4*w,dang=P3.drag?Math.sin(t*9)*.35:0;
-  J[3].r[0]=sw+dang;J[4].r[0]=-sw-dang;J[5].r[0]=-sw+dang;J[6].r[0]=sw-dang;
+  K.tors.r[1]=Math.sin(ph+.6)*.035*w;K.tors.p[1]=(c.happyT>0?Math.abs(Math.sin((1.1-c.happyT)*Math.PI*3))*.2:0)+Math.abs(Math.sin(ph))*.02*c.wk;K.tors.r[2]=Math.sin(ph)*.04*c.wk;
+  const dang=P3.drag?Math.sin(t*9)*.35:0;
+  if(!K.lp0)K.lp0=[3,4,5,6].map(k=>J[k].p.slice());
+  /* 側序步態：後左→前左→後右→前右，四拍各差 1/4 週期；腳向前擺時抬起 */
+  [[3,.25],[4,.75],[5,0],[6,.5]].forEach((q,i)=>{const f=ph+q[1]*6.2832,k=q[0],sn=Math.sin(f),cs=Math.cos(f);
+    J[k].r[0]=-sn*.7*w+(i%2?-dang:dang);J[k].p[2]=K.lp0[i][2]+Math.max(0,cs)*.09*w+(P3.drag?.03:0);});
   J[1].p[2]=Math.sin(t*2.1)*.008;
-  J[7].r[0]=Math.sin(t*1.5)*.08*(1-w);J[7].r[2]=Math.sin(ph)*.25*w+Math.sin(t*1.7)*.12;
+  J[7].r[0]=Math.sin(t*1.5)*.08*(1-w);J[7].r[2]=Math.sin(ph)*.2*w+Math.sin(t*1.7)*.12+(c.happyT>0?Math.sin(t*11)*.4:0);
   J[8].r[1]=Math.sin(t*2.2-.6)*.14*(1+w);J[9].r[1]=Math.sin(t*2.2-1.2)*.18*(1+w);J[8].r[0]=Math.sin(t*1.5-.5)*.06;
   J[2].r[0]=.7*c.eatK+Math.sin(ph*2)*.03*w+(c.happyT>0?Math.sin(t*14)*.08:0);
-  J[2].r[2]=Math.sin(t*.8)*.45*(1-w)*(1-c.eatK)+Math.sin(ph)*.05*w;
+  J[2].r[2]=Math.sin(t*.8)*.45*(1-w)*(1-c.eatK)-Math.sin(ph+.6)*.06*w;
   const u=(t%4.3)/.36,bl=u<1?1-.92*(1-Math.abs(u*2-1)):1;J[10].sc=[1,1,bl];J[11].sc=[1,1,bl];}
 
 /* ---------- 狀態 ---------- */
@@ -2169,12 +2172,12 @@ function update(dt,t){const c=P3.cat;
     if(c.eatT>0){c.mode='eat';c.eatT-=dt;if(P3.bowl)c.want=Math.atan2(P3.bowl.x-c.x,P3.bowl.z-c.z);if(c.eatT<=0)finishEat();}
     else if(c.tx!=null){const dx=c.tx-c.x,dz=c.tz-c.z,d=Math.hypot(dx,dz);c.want=Math.atan2(dx,dz);
       if(d<.1){c.tx=null;if(P3.bowl){c.eatT=2.4;}else c.wait=1.5+Math.random()*3.5;c.mode='idle';}
-      else{c.mode='walk';const sp=(P3.bowl?2.2:1.35)*(Math.abs(angD(c.want,c.yaw))<1.1?1:.15),st=Math.min(d,sp*dt);c.x+=dx/d*st;c.z+=dz/d*st;}}
+      else{c.mode='walk';const sp=(P3.bowl?2.0:1.0)*(Math.abs(angD(c.want,c.yaw))<1.1?1:.15),st=Math.min(d,sp*dt);c.x+=dx/d*st;c.z+=dz/d*st;}}
     else{c.mode='idle';c.wait-=dt;if(c.wait<=0){if(Math.random()<.25)say3(petMood()[Math.floor(Math.random()*4)]);c.tx=(Math.random()*2-1)*BND;c.tz=(Math.random()*2-1)*BND;}}
   }
   c.yaw+=clamp(angD(c.want,c.yaw),-5*dt,5*dt);
   c.x=clamp(c.x,-BND-.2,BND+.2);c.z=clamp(c.z,-BND-.2,BND+.2);
-  c.wk+=((c.mode==='walk'?1:0)-c.wk)*Math.min(1,dt*8);c.phase+=dt*(c.mode==='walk'?9.5:0);
+  c.wk+=((c.mode==='walk'?1:0)-c.wk)*Math.min(1,dt*8);c.phase+=dt*(c.mode==='walk'?10.5:0);
   c.lift+=((P3.drag?.45:0)-c.lift)*Math.min(1,dt*10);c.happyT=Math.max(0,c.happyT-dt);c.eatK+=((c.mode==='eat'?1:0)-c.eatK)*Math.min(1,dt*7);
   const K=c.cat,w=c.wk,sw=Math.sin(c.phase)*.7*w,dang=P3.drag?Math.sin(t*9)*.35:0;
   K.root.p=[c.x,c.lift,c.z];K.root.r=[0,c.yaw,0];
