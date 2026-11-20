@@ -2097,6 +2097,8 @@ function buildCat(L){const root=nd(null),tors=add(root,nd(null,[0,0,0]));
   });
   const legs=[];[[.17,.34,'F'],[-.17,.34,'F'],[.17,-.3,'R'],[-.17,-.3,'R']].forEach(([x,z,t])=>{const p=add(tors,nd(null,[x,.3,z]));add(p,nd(t==='F'?L.legF:L.leg));legs.push(p);});
   const tail=add(tors,nd(L.tail,[0,.52,-.5],[-.55,0,0]));tail.tw=[0,0];
+  /* v2 比例：身體加長、頭略大、四肢縮短 */
+  if(J[1])J[1].sc=[1,1.12,.98];if(J[2])J[2].sc=[1.05,1,1.04];[3,4,5,6].forEach(k=>{if(J[k])J[k].sc=[1,1,.76];});
   const shadow=nd(L.shadow,[0,.012,0],[0,0,0],[.62,1,.95]);shadow.a=.26;shadow.tint=[0,0,0];
   return{root,tors,head,eL,eR,legs,tail,shadow};}
 
@@ -2123,7 +2125,7 @@ async function loadGLB(){if(GLB)return GLB;
     const fc=FURCFG[k];const If=[];for(let t=0;t<p.ni;t+=3)if(W[I[t]]>0&&W[I[t+1]]>0&&W[I[t+2]]>0)If.push(I[t],I[t+1],I[t+2]);parts[k]={glb:true,P,N,C,I,W,If:new Uint16Array(If)};if(fc&&W.some(x=>x>0)){parts[k].fur={len:fc[0],shells:fc[1],dens:fc[2]};parts[k].mode=0;}vo+=p.nv;io+=p.ni;});
   return GLB={parts,jp:hdr.jp};}
 function buildGLBCat(L){const G=GLB,jp=G.jp,par={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:7,9:8,10:2,11:2,12:2};
-  const root=nd(null),tors=add(root,nd(null)),model=add(tors,nd(null,[0,0,0],[-Math.PI/2,0,0],[.5,.5,.5]));const J={0:model};
+  const root=nd(null),tors=add(root,nd(null)),model=add(tors,nd(null,[0,-.05,0],[-Math.PI/2,0,0],[.5,.5,.5]));const J={0:model};
   for(let k=1;k<=12;k++){const p=par[k];if(!G.parts[k]&&k>11)continue;J[k]=add(J[p],nd(G.parts[k],[jp[k][0]-jp[p][0],jp[k][1]-jp[p][1],jp[k][2]-jp[p][2]]));}
   const shadow=nd(L.shadow,[0,.012,0],[0,0,0],[.62,1,.95]);shadow.a=.26;shadow.tint=[0,0,0];
   return{root,tors,glb:true,J,head:J[2],eL:J[10],eR:J[11],legs:[J[3],J[4],J[5],J[6]],tail:J[7],shadow};}
