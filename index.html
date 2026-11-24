@@ -202,7 +202,7 @@ label>input,label>select{flex:1;max-width:62%;text-align:right;border:0;backgrou
 .as-stats.s2{border-top:0}
 .gh{background:var(--dim);color:var(--sub);padding:10px 14px;font-size:16px}
 .gr{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--card)}
-.gr .gl{line-height:1.5;color:var(--sub);font-size:17px}.gr .gb{color:var(--sub);font-size:17px}
+.gr .gl{line-height:1.5;color:var(--sub);font-size:17px}.gr .gb2{line-height:1.5;color:var(--sub);font-size:17px;text-align:right}.gr .gb{color:var(--sub);font-size:17px}
 .as-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px calc(8px + var(--safe-b));border-top:1px solid var(--line);flex:none}
 .as-bar button{background:none;border:0;color:var(--tx)}
 .as-bar .plus{line-height:0;padding:6px}.as-bar .draw{font-size:18px}
@@ -833,6 +833,12 @@ function accEv(aid){
 }
 const evSum=l=>l.reduce((s,e)=>({inc:s.inc+e.inc,exp:s.exp+e.exp,tin:s.tin+e.tin,tout:s.tout+e.tout}),{inc:0,exp:0,tin:0,tout:0});
 const sgn=n=>n<0?'e':n>0?'i':'z';
+/* 信用卡帳單週期：以結帳日隔天為週期起點，日期往前平移 close 天後再取年/月 */
+const isCyc=a=>a&&a.type==='credit'&&a.bill&&+a.bill.close>0;
+function cycKey(a,d,len){if(!isCyc(a))return d.slice(0,len);const t=new Date(Date.UTC(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10)-(+a.bill.close)));return t.toISOString().slice(0,len);}
+function cycLbl(a,k){const c=+a.bill.close,pad=n=>String(n).padStart(2,'0');
+  if(k.length===4)return k+'年1月'+(c+1)+'日～'+(+k+1)+'年1月'+c+'日';
+  const y=+k.slice(0,4),m=+k.slice(5),ny=m===12?y+1:y,nm=m===12?1:m+1;return y+'年'+m+'月'+(c+1)+'日～'+(ny!==y?ny+'年':'')+nm+'月'+c+'日';}
 let AP=null;
 function openAcct(id){AP={page:'sum',aid:id,grain:'y',period:'all',det:null,e:null};aDraw();}
 function openAcctEdit(id){
@@ -851,14 +857,16 @@ function aSum(a){
   const ev=AP.period==='year'?all.filter(e=>e.d.startsWith(y)):AP.period==='month'?all.filter(e=>e.d.startsWith(m)):all;
   const bal=balances()[a.id],s=evSum(ev),x=s.inc-s.exp,tr=s.tin-s.tout;
   const start=AP.period==='all'?(+a.init||0):bal-x-tr;
-  const g={};ev.forEach(e=>{const k=AP.grain==='y'?e.d.slice(0,4):e.d.slice(0,7);const o=g[k]||(g[k]={x:0,tr:0,bal:0});o.x+=e.inc-e.exp;o.tr+=e.tin-e.tout;o.bal=e.bal;});
+  const g={};ev.forEach(e=>{const k=cycKey(a,e.d,AP.grain==='y'?4:7);const o=g[k]||(g[k]={x:0,tr:0,bal:0,sp:0,pay:0});o.x+=e.inc-e.exp;o.tr+=e.tin-e.tout;o.sp+=e.exp-e.inc;o.pay+=e.tin-e.tout;o.bal=e.bal;});
   const keys=Object.keys(g).sort().reverse();
-  const lbl=k=>k.length===4?k+'年':k.slice(0,4)+'年'+(+k.slice(5))+'月';
+  const cy=isCyc(a),cr=a.type==='credit';
+  const lbl=k=>cy?cycLbl(a,k):k.length===4?k+'年':k.slice(0,4)+'年'+(+k.slice(5))+'月';
+  if(cr){let prevSp=-(+a.init||0),S0=0,first=true;Object.keys(g).sort().forEach(k=>{const o=g[k];S0=(first?0:S0)+o.pay-prevSp;first=false;prevSp=o.sp;o.sur=S0;});}
   const plab={all:'全部期間',year:'今年',month:'本月'}[AP.period];
   return `<div class="pg-h w"><button class="l" data-a="close">‹ 帳戶</button><h2>${esc(a.name)}</h2><button class="r" data-a="edit">編輯</button></div>
-  <div class="pg-b"><div class="as-top"><span class="cur">TWD</span><button class="per" data-a="period">${plab} ⋮</button><div class="bal ${sgn(bal)}">$${money(bal)}<small>餘額</small></div></div>
-  <div class="as-stats"><div><b class="${sgn(start)}">${money(start)}</b><small>${AP.period==='all'?'初始餘額':'期初餘額'}</small></div><div><b class="${sgn(x)}">${money(x)}</b><small>收支</small></div><div><b class="${sgn(tr)}">${money(tr)}</b><small>轉帳</small></div></div>
-  ${keys.map(k=>`<div class="gh">${lbl(k)}</div><div class="gr" data-a="group" data-k="${k}"><div class="gl"><div>收支:<span class="${sgn(g[k].x)}">${money(g[k].x)}</span></div><div>轉帳:<span class="${sgn(g[k].tr)}">${money(g[k].tr)}</span></div></div><div class="gb">餘額:<span class="${sgn(g[k].bal)}">${money(g[k].bal)}</span> ›</div></div>`).join('')||'<div class="emp">沒有記錄</div>'}</div>
+  <div class="pg-b"><div class="as-top"><span class="cur">TWD</span><button class="per" data-a="period">${plab} ⋮</button><div class="bal ${sgn(bal)}">$${money(cr&&bal<0?-bal:bal)}<small>${cr&&bal<0?'負債':'餘額'}</small></div></div>
+  <div class="as-stats"><div><b class="${sgn(start)}">${money(cr?Math.abs(start):start)}</b><small>${AP.period==='all'?(cr?'初始負債':'初始餘額'):(cr?'期初負債':'期初餘額')}</small></div><div><b class="${sgn(x)}">${money(x)}</b><small>收支</small></div><div><b class="${sgn(tr)}">${money(tr)}</b><small>轉帳</small></div></div>
+  ${keys.map(k=>`<div class="gh">${lbl(k)}</div><div class="gr" data-a="group" data-k="${k}">${cr?`<div class="gl"><div>消費:<span class="e">${money(g[k].sp)}</span></div><div>繳款:<span class="i">${money(g[k].pay)}</span></div></div><div class="gb2"><div>${g[k].bal<0?'負債':'餘額'}:<span class="${g[k].bal<0?'e':'i'}">${money(Math.abs(g[k].bal))}</span></div><div>餘額:<span class="${sgn(g[k].sur)}">${money(g[k].sur)}</span> ›</div></div>`:`<div class="gl"><div>收支:<span class="${sgn(g[k].x)}">${money(g[k].x)}</span></div><div>轉帳:<span class="${sgn(g[k].tr)}">${money(g[k].tr)}</span></div></div><div class="gb">餘額:<span class="${sgn(g[k].bal)}">${money(g[k].bal)}</span> ›</div>`}</div>`).join('')||'<div class="emp">沒有記錄</div>'}</div>
   <div class="as-bar"><button class="plus" data-a="add">${SV_PLUS}</button><div class="seg4"><button data-a="grain" data-v="m" class="${AP.grain==='m'?'on':''}">月</button><button data-a="grain" data-v="y" class="${AP.grain==='y'?'on':''}">年</button></div><button class="draw" data-a="draw">領錢</button></div>`;
 }
 function arow(e,mode,aid){
@@ -872,7 +880,7 @@ function arow(e,mode,aid){
 }
 function aDet(a){
   const D=AP.det,all=accEv(a.id),searching=D.q.trim()!=='';
-  let ev=searching?all:all.filter(e=>e.d.startsWith(D.key));
+  let ev=searching?all:all.filter(e=>cycKey(a,e.d,D.key.length)===D.key);
   if(D.mode==='x')ev=ev.filter(e=>e.t.type!=='t');else if(D.mode==='t')ev=ev.filter(e=>e.t.type==='t');
   if(searching)ev=ev.filter(e=>matchT(e.t,D.q));
   const s=evSum(ev),x=s.inc-s.exp,tr=s.tin-s.tout;
@@ -883,7 +891,7 @@ function aDet(a){
     const parts=D.mode==='x'?[sm.inc?'收入:'+money(sm.inc):'',sm.exp?'支出:'+money(sm.exp):'']:D.mode==='t'?['轉帳:'+money(dt)]:[l.some(e=>e.t.type!=='t')?'收支:'+money(dx):'',l.some(e=>e.t.type==='t')?'轉帳:'+money(dt):''];
     return `<div class="dh2"><div>${dLbl(d)}</div><small>${parts.filter(Boolean).join('　')}</small></div>`+l.map(e=>arow(e,D.mode,a.id)).join('');
   }).join('')||'<div class="emp">沒有記錄</div>';
-  const title=D.key.length===4?D.key+'年':D.key.slice(0,4)+'年'+(+D.key.slice(5))+'月';
+  const title=isCyc(a)?cycLbl(a,D.key):D.key.length===4?D.key+'年':D.key.slice(0,4)+'年'+(+D.key.slice(5))+'月';
   return `<div class="pg-h w"><button class="l" data-a="back">‹ ${esc(a.name)}</button><h2>明細</h2><div class="r ic2"><button data-a="dsearch">${SV_SRCH}</button><button data-a="dadd">${SV_PLUS}</button></div></div>
   ${D.qOn?`<div class="srch"><input data-af="dq" placeholder="搜尋備註、分類、成員、標籤…" value="${esc(D.q)}"></div>`:''}
   <div class="pg-b">${searching?'':`<div class="mt"><button data-a="dprev">‹</button><button class="mtt" data-a="dpick">${title}<small>▼</small></button><button data-a="dnext">›</button></div>`}
