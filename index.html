@@ -222,6 +222,7 @@ label>input,label>select{flex:1;max-width:62%;text-align:right;border:0;backgrou
 .tg i::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;transition:.2s}
 .tg input:checked+i{background:#34c759}.tg input:checked+i::after{transform:translateX(20px)}
 .pr:has(.tg){justify-content:space-between}
+.xr .pin{font-size:16px}.xdel{background:none;border:0;color:var(--sub);font-size:16px;padding:4px 6px}
 .delrow{color:var(--exp);text-align:center;padding:14px;margin-top:14px;background:var(--card);font-size:17px}
 .ip{display:grid;place-items:center;padding:18px}.ip .ai{width:64px;height:64px;font-size:32px}
 .igrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:12px 14px}
@@ -849,15 +850,23 @@ function cycLbl(a,k){const c=+a.bill.close,pad=n=>String(n).padStart(2,'0');
 let AP=null;
 function openAcct(id){AP={page:'sum',aid:id,grain:'y',period:'all',det:null,e:null};aDraw();}
 function openAcctEdit(id){
+  const a0=id?S.accounts.find(x=>x.id===id):null;
   const a=id?S.accounts.find(x=>x.id===id):null;
   AP={page:'edit',aid:id,grain:AP?AP.grain:'y',period:AP?AP.period:'all',det:null,
-    e:{id,type:a?a.type:'cash',name:a?a.name:'',init:a?(a.type==='credit'?String(-(a.init||0)):String(a.init||0)):'',pay:a&&a.bill?a.bill.pay||'':'',close:a&&a.bill?a.bill.close||0:0,payDay:a&&a.bill?a.bill.payDay||0:0,payNext:a&&a.bill?a.bill.payNext!==false:true,adj:a&&a.bill?a.bill.adj||'none':'none',auto:!!(a&&a.bill&&a.bill.auto),noNet:!!(a&&a.noNet),icon:a&&a.icon||'',color:a&&a.color||'',note:a&&a.note||'',off:!!(a&&a.off),kp:false}};
+    e:{exp:a0&&a0.exp?a0.exp.map(x=>({d:x.d,p:String(x.p)})):[],id,type:a?a.type:'cash',name:a?a.name:'',init:a?(a.type==='credit'?String(-(a.init||0)):String(a.init||0)):'',pay:a&&a.bill?a.bill.pay||'':'',close:a&&a.bill?a.bill.close||0:0,payDay:a&&a.bill?a.bill.payDay||0:0,payNext:a&&a.bill?a.bill.payNext!==false:true,adj:a&&a.bill?a.bill.adj||'none':'none',auto:!!(a&&a.bill&&a.bill.auto),noNet:!!(a&&a.noNet),icon:a&&a.icon||'',color:a&&a.color||'',note:a&&a.note||'',off:!!(a&&a.off),kp:false}};
   aDraw();
 }
 function matchT(t,q){
   q=q.trim().toLowerCase();if(!q)return true;
   const c=t.type==='t'?'轉帳':(S.cats[t.type].find(x=>x.id===t.cat)?.name||'');
   return [t.note,c,t.member,accName(t.acc),(t.tags||[]).join(' '),String(t.amt)].join(' ').toLowerCase().includes(q);
+}
+function ptsExp(a,bal){
+  const l=(a.exp||[]).filter(x=>x.d&&+x.p>0).sort((x,y)=>x.d.localeCompare(y.d));if(!l.length)return '';
+  const td=today();let cum=0,live=bal;l.forEach(x=>{if(x.d<td)live-=+x.p;});
+  const rows=l.map(x=>{cum+=+x.p;const gone=x.d<td,left=Math.max(0,bal-cum);
+    return `<div class="gr" style="${gone?'opacity:.5':''}"><div class="gl"><div>${x.d}${gone?'（已到期）':''}</div><div>到期:<span class="e">${money(+x.p)}</span></div></div><div class="gb2"><div>到期後剩餘:<span class="${left>0?'i':''}">${money(left)}</span></div></div></div>`;}).join('');
+  return `<div class="gh">點數到期（目前有效：${money(Math.max(0,live))}）</div>${rows}`;
 }
 function aSum(a){
   const all=accEv(a.id),y=today().slice(0,4),m=today().slice(0,7);
@@ -871,8 +880,9 @@ function aSum(a){
   if(cr){let prevSp=-(+a.init||0),S0=0,first=true;Object.keys(g).sort().forEach(k=>{const o=g[k];S0=(first?0:S0)+o.pay-prevSp;first=false;prevSp=o.sp;o.sur=S0;});}
   const plab={all:'全部期間',year:'今年',month:'本月'}[AP.period];
   return `<div class="pg-h w"><button class="l" data-a="close">‹ 帳戶</button><h2>${esc(a.name)}</h2><button class="r" data-a="edit">編輯</button></div>
-  <div class="pg-b"><div class="as-top"><span class="cur">TWD</span><button class="per" data-a="period">${plab} ⋮</button><div class="bal ${sgn(bal)}">$${money(cr&&bal<0?-bal:bal)}<small>${cr&&bal<0?'負債':'餘額'}</small></div></div>
+  <div class="pg-b"><div class="as-top"><span class="cur">${pt?'點數':'TWD'}</span><button class="per" data-a="period">${plab} ⋮</button><div class="bal ${sgn(bal)}">${pt?'':'$'}${money(cr&&bal<0?-bal:bal)}<small>${cr&&bal<0?'負債':'餘額'}</small></div></div>
   <div class="as-stats"><div><b class="${sgn(start)}">${money(cr?Math.abs(start):start)}</b><small>${AP.period==='all'?(cr?'初始負債':pt?'初始點數':'初始餘額'):(cr?'期初負債':pt?'期初點數':'期初餘額')}</small></div><div><b class="${sgn(x)}">${money(x)}</b><small>收支</small></div><div><b class="${sgn(tr)}">${money(tr)}</b><small>轉帳</small></div></div>
+  ${pt?ptsExp(a,bal):''}
   ${keys.map(k=>`<div class="gh">${lbl(k)}</div><div class="gr" data-a="group" data-k="${k}">${cr?`<div class="gl"><div>消費:<span class="e">${money(g[k].sp)}</span></div><div>繳款:<span class="i">${money(g[k].pay)}</span></div></div><div class="gb2"><div>${g[k].bal<0?'負債':'餘額'}:<span class="${g[k].bal<0?'e':'i'}">${money(Math.abs(g[k].bal))}</span></div><div>餘額:<span class="${sgn(g[k].sur)}">${money(g[k].sur)}</span> ›</div></div>`:`<div class="gl"><div>收支:<span class="${sgn(g[k].x)}">${money(g[k].x)}</span></div><div>轉帳:<span class="${sgn(g[k].tr)}">${money(g[k].tr)}</span></div></div><div class="gb">餘額:<span class="${sgn(g[k].bal)}">${money(g[k].bal)}</span> ›</div>`}</div>`).join('')||'<div class="emp">沒有記錄</div>'}</div>
   <div class="as-bar"><button class="plus" data-a="add">${SV_PLUS}</button><div class="seg4"><button data-a="grain" data-v="m" class="${AP.grain==='m'?'on':''}">月</button><button data-a="grain" data-v="y" class="${AP.grain==='y'?'on':''}">年</button></div><button class="draw" data-a="draw">領錢</button></div>`;
 }
@@ -923,6 +933,7 @@ function aEdit(){
   <div class="pr"><span class="pl">不計入資產</span><label class="tg"><input type="checkbox" data-af="noNet" ${e.noNet?'checked':''}><i></i></label></div>
   <div class="pr" data-a="goicon"><span class="pl">圖示</span><span class="pv">${accIcon({type:e.type,icon:e.icon,color:e.color})}</span><span class="chv">›</span></div>
   ${bill}
+  ${e.type==='points'?`<div style="height:14px"></div><div class="pr" style="color:var(--sub);font-size:14px"><span>點數到期日</span></div>${(e.exp||[]).map((x,i)=>`<div class="pr xr"><input type="date" class="pin" style="text-align:left" data-af="xd" data-i="${i}" value="${esc(x.d)}"><input class="pin" inputmode="decimal" data-af="xp" data-i="${i}" value="${esc(x.p)}" placeholder="到期點數"><button class="xdel" data-a="xdel" data-i="${i}">✕</button></div>`).join('')}<div class="pr" data-a="xadd" style="color:var(--blue,#0a84ff)"><span>＋ 新增到期日</span></div>`:''}
   <div style="height:14px"></div><textarea class="note" data-af="note" placeholder="備註">${esc(e.note)}</textarea><div style="height:14px"></div>
   <div class="pr"><span class="pl">使用停止</span><label class="tg"><input type="checkbox" data-af="off" ${e.off?'checked':''}><i></i></label></div>
   ${e.id?'<div class="delrow" data-a="del">刪除帳戶</div>':''}<div style="height:40px"></div></div>
@@ -975,6 +986,7 @@ function saveAcct(){
     const old=e.id?(S.accounts.find(x=>x.id===e.id)||{}).bill:null;
     o.bill={pay:e.pay,close:e.close,payDay:e.payDay,payNext:e.payNext,adj:e.adj,auto:!!e.auto,since:(old&&old.auto&&e.auto&&old.since)||today(),done:(old&&old.done)||''};
   }
+  if(e.type==='points'){const ex=(e.exp||[]).filter(x=>x.d&&+x.p>0).map(x=>({d:x.d,p:+x.p})).sort((x,y)=>x.d.localeCompare(y.d));if(ex.length)o.exp=ex;}
   if(e.noNet)o.noNet=true;if(e.icon)o.icon=e.icon;if(e.color)o.color=e.color;if(e.note.trim())o.note=e.note.trim();if(e.off)o.off=true;
   if(e.id)S.accounts[S.accounts.findIndex(x=>x.id===e.id)]=o;else S.accounts.push(o);
   runRecurring();save();
@@ -999,6 +1011,8 @@ const AACT={
   dadd(){const D=AP.det,td=today();openForm({acc:AP.aid,date:td.startsWith(D.key)?td:(D.key.length===4?D.key+'-01-01':D.key+'-01')});},
   cancel(){if(AP.e.id){AP.page='sum';AP.e=null;}else AP=null;aDraw();},
   save(){saveAcct();},
+  xadd(){AP.e.exp.push({d:'',p:''});aDraw();},
+  xdel(el){AP.e.exp.splice(+el.dataset.i,1);aDraw();},
   del(){const id=AP.e.id;
     if(S.tx.some(t=>t.acc===id||t.to===id))return alert('此帳戶已有記錄，無法刪除。可改用「使用停止」。');
     if(S.accounts.length<=1)return alert('至少需保留一個帳戶');
@@ -1028,6 +1042,7 @@ const AACT={
     const b=e.target.closest('[data-a]');if(b&&AACT[b.dataset.a])AACT[b.dataset.a](b);
   });
   pg.addEventListener('input',e=>{const k=e.target.dataset.af;if(!k||!AP)return;
+    if(k==='xd'||k==='xp'){const x=AP.e.exp[+e.target.dataset.i];if(x)x[k==='xd'?'d':'p']=e.target.value;return;}
     if(k==='name')AP.e.name=e.target.value;else if(k==='note')AP.e.note=e.target.value;
     else if(k==='dq'){if(e.isComposing||pg._cmp)return;dqApply(e.target);}});
   const dqApply=t=>{if(AP.det.q===t.value)return;AP.det.q=t.value;const pos=t.selectionStart;aDraw();const i=pg.querySelector('[data-af=dq]');if(i){i.focus();i.setSelectionRange(pos,pos);}};
